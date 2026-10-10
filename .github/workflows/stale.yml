@@ -38,8 +38,8 @@ jobs:
             If it's still relevant, please leave a comment - otherwise it will be closed in 14 days.
 
             Things that help keep an issue moving:
-            - A current reproduction (Rust snippet or failing test)
-            - Output of `rustc --version && cargo --version` and the feature flags in use
+            - A current reproduction (Kotlin snippet or failing test)
+            - Output of `./gradlew --version` (JDK, Gradle, Kotlin) and the modules in use
             - Any new findings since the last activity
 
             Maintainers can keep this open indefinitely by adding the `pinned` label.
