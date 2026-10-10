@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+build/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+out/
+
+# OS
+.DS_Store
+
+# Logs and local files
+*.log

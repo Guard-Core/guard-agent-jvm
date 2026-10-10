@@ -1,0 +1,69 @@
+"area: engine":
+  - changed-files:
+      - any-glob-to-any-file:
+          - crates/guard-core-engine/**
+
+"area: facade":
+  - changed-files:
+      - any-glob-to-any-file:
+          - crates/guard-core-rs/**
+
+"area: python-bindings":
+  - changed-files:
+      - any-glob-to-any-file:
+          - crates/guard-core-python/**
+
+"area: conformance":
+  - changed-files:
+      - any-glob-to-any-file:
+          - crates/guard-core-conformance/**
+          - conformance/**
+          - CORPUS.md
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - crates/**/tests/**
+
+benchmarks:
+  - changed-files:
+      - any-glob-to-any-file:
+          - crates/guard-core-benchmark/**
+          - fuzz/**
+          - scripts/benches/**
+
+examples:
+  - changed-files:
+      - any-glob-to-any-file:
+          - examples/**
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - mkdocs.yml
+          - README.md
+          - CHANGELOG.md
+          - LICENSE-MIT
+          - LICENSE-APACHE
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - .pre-commit-config.yaml
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - Cargo.toml
+          - rustfmt.toml
+          - clippy.toml
+          - rust-toolchain.toml
+          - deny.toml
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - Cargo.toml
+          - Cargo.lock
