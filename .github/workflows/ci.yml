@@ -36,10 +36,9 @@ jobs:
 
       - name: Checkout engine (guard-core-jvm at the pinned ref)
         run: |
-          git clone --depth 1 https://github.com/Guard-Core/guard-core-jvm.git guard-core-jvm
+          git clone https://github.com/Guard-Core/guard-core-jvm.git guard-core-jvm
           cd guard-core-jvm
-          git fetch --depth 1 origin 5f4ea56
-          git checkout 5f4ea56
+          git checkout 5f4ea56ab026f00313dfd840ab7d05757afb6400
 
       # W7 lands the Redis-backed persistence tests; both need Redis (the
       # same service shape the guard-core-jvm CI runs).
