@@ -14,13 +14,13 @@ kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
-# The engine facade: com.guardcore:guard-core, substituted with the pinned
+# The engine facade (groupId com.guard-core, the Central Portal namespace): substituted with the pinned
 # guard-core-jvm includeBuild checkout (settings.gradle.kts). Compile-only in
 # main: only the AgentHandlerProtocol sink contract is referenced, and the Go
 # agent library is engine-free at runtime (guard-agent-go's go.mod carries the
 # engine for the examples alone), so the published artifact stays
 # transitive-free; tests link the real facade through the includeBuild.
-guard-core = { module = "com.guardcore:guard-core", version.ref = "guardCore" }
+guard-core = { module = "com.guard-core:guard-core", version.ref = "guardCore" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

@@ -4,6 +4,22 @@ All notable changes to guard-agent-jvm are documented here. The version line mir
 
 ## Unreleased (3.2.2-SNAPSHOT)
 
+### Changed (W8b, release engineering; nothing released)
+
+- Maven coordinates move to groupId `com.guard-core` (the Central Portal namespace; guardcore.com
+  proved unverifiable and is not owned by the operator; nothing was ever published under
+  `com.guardcore`). Kotlin/JVM packages stay `com.guardcore.*` (hyphens are illegal in JVM
+  packages).
+- `maven-publish` + `signing` with sources/javadoc jars and the Portal-required POM (MIT license,
+  developers, scm); repositories move to `settings.gradle.kts`; `GUARD_CORE_USE_COMPOSITE` env
+  toggle (default composite ON; `false` = resolve the engine from mavenLocal, then Maven Central,
+  the release-workflow mode). The published POM carries no guard-core dependency (compileOnly):
+  the agent artifact stays engine-free at runtime.
+- `.github/workflows/release.yml`: engine-artifact pre-flight on Maven Central (engine before
+  adapters and agent), tests at tag, tag-consistency audit (bare vX.Y.z, tag equals the in-file
+  version, SNAPSHOT flip enforced), publish job with per-artifact repo1 existence check and a
+  Central Portal deployment. See docs/release.md.
+
 ### Added
 
 - W7 real port of [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2, behavior 1:1 with byte-exact observable surfaces:
