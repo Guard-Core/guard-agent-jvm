@@ -1,0 +1,45 @@
+name: Scheduled Lint
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  scheduled-detekt-osv:
+    name: Weekly detekt + osv-scanner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        # pin: unverified (no in-org setup-java usage found; resolved from actions/setup-java v6.0.1)
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: detekt
+        run: ./gradlew detekt --no-daemon
+
+      # Weekly dependency audit on the default branch so new CVEs surface
+      # without a push (spec 14.1 scheduled scanning; CodeQL carries the
+      # weekly static-analysis half via its own schedule).
+      - name: Install osv-scanner (v2.6.0, checksum-pinned)
+        run: |
+          curl --fail --silent --show-error --location \
+            -o /usr/local/bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64
+          echo "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108  /usr/local/bin/osv-scanner" | sha256sum --check -
+          chmod +x /usr/local/bin/osv-scanner
+
+      - name: Scan the committed lockfile
+        run: |
+          osv-scanner scan --config osv-scanner.toml --lockfile gradle.lockfile

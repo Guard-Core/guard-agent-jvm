@@ -17,6 +17,14 @@ group = "com.guard-core"
 
 version = "3.2.2-SNAPSHOT"
 
+// Section 14.3 lockfile analog: every configuration resolves against the
+// committed gradle.lockfile. A dependency change without
+// `./gradlew --write-locks` fails the build, and the lockfile is what the
+// osv-scanner dependency-audit job reads.
+dependencyLocking {
+  lockAllConfigurations()
+}
+
 kotlin {
   jvmToolchain(17)
 }
