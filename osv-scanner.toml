@@ -1,0 +1,67 @@
+# osv-scanner configuration (the dependency-audit CI job and the weekly
+# scheduled scan read this via --config).
+#
+# Suppression discipline (spec 14): entries are per-advisory, each with a
+# reason, and each names its removal trigger. Nothing is disabled wholesale.
+# When the triggering dependency moves, delete the matching entries in the
+# same PR - the audit must fail again the moment a suppression is stale.
+
+# io.netty 4.1.118.Final is the transitive graph of io.lettuce:lettuce-core
+# 6.7.1.RELEASE, the agent's pinned Redis persistence client. Guard usage
+# connects Lettuce to a single user-configured Redis endpoint, so the
+# affected netty surfaces (SniHandler traversal, compressed-decode paths,
+# DNS-resolver spoofing) are not attacker-reachable in this deployment shape.
+# The pin moves with the next lettuce upgrade at the next synchronized train;
+# every entry below is removed then.
+
+[[IgnoredVulns]]
+id = "GHSA-c4c3-7fpv-j4q5"
+reason = "netty-handler 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, SniHandler path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-558v-64gr-wgg4"
+reason = "netty-codec 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, codec path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-5pvg-856g-cp85"
+reason = "netty-resolver-dns 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; no DNS-resolver usage (single configured endpoint); removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-676x-f7gg-47vc"
+reason = "netty-resolver-dns 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; no DNS-resolver usage (single configured endpoint); removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-3qp7-7mw8-wx86"
+reason = "netty-handler 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, handler path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-c653-97m9-rcg9"
+reason = "netty-handler 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, handler path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-x4gw-5cx5-pgmh"
+reason = "netty-handler 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, handler path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-cm33-6792-r9fm"
+reason = "netty-codec-dns 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; no DNS-resolver usage (single configured endpoint); removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-mj4r-2hfc-f8p6"
+reason = "netty-codec 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, codec path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-3p8m-j85q-pgmj"
+reason = "netty-codec 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, codec path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-fccg-mwvh-qqg4"
+reason = "netty-handler 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; single-endpoint Redis usage, handler path not attacker-reachable; removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-xmv7-r254-6q78"
+reason = "netty-resolver-dns 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; no DNS-resolver usage (single configured endpoint); removed at the next lettuce upgrade"
+
+[[IgnoredVulns]]
+id = "GHSA-mfg7-5gfp-c4w3"
+reason = "netty-codec-dns 4.1.118 transitive via the facade's pinned lettuce-core 6.7.1; no DNS-resolver usage (single configured endpoint); removed at the next lettuce upgrade"
