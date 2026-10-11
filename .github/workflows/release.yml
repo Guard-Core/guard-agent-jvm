@@ -241,7 +241,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           token=$(printf '%s:%s' "$CENTRAL_PORTAL_USERNAME" "$CENTRAL_PORTAL_PASSWORD" | base64 | tr -d '\n')
           rm -f central-bundle.zip
-          (cd build/central-staging && zip -qr ../central-bundle.zip .)
+          (cd build/central-staging && zip -qr "$GITHUB_WORKSPACE/central-bundle.zip" .)
           deployment=""
           for _attempt in 1 2 3; do
             response=$(curl -sS --fail-with-body -X POST \
