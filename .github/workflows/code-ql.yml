@@ -21,6 +21,22 @@ jobs:
         with:
           persist-credentials: false
 
+      # The engine dependency: the composite includeBuild needs the pinned
+      # guard-core-jvm checkout next to the repository (same as ci.yml).
+      - name: Checkout engine (guard-core-jvm @ 5f4ea56)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Guard-Core/guard-core-jvm
+          ref: 5f4ea56ab026f00313dfd840ab7d05757afb6400
+          path: guard-core-jvm
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:

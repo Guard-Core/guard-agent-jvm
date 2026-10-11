@@ -34,8 +34,30 @@ jobs:
       # TODO: wire gradle/actions/wrapper-validation here once an in-org repo
       # pins a SHA for it; no Guard-Core repo references it yet.
 
+      - name: Checkout engine (guard-core-jvm at the pinned ref)
+        run: |
+          git clone https://github.com/Guard-Core/guard-core-jvm.git guard-core-jvm
+          cd guard-core-jvm
+          git checkout 5f4ea56ab026f00313dfd840ab7d05757afb6400
+
+      # W7 lands the Redis-backed persistence tests; both need Redis (the
+      # same service shape the guard-core-jvm CI runs).
+      - name: Start Redis
+        run: |
+          docker run -d --name guard-redis -p 6379:6379 redis:7-alpine
+          for i in $(seq 1 30); do
+            if docker exec guard-redis redis-cli ping | grep -q PONG; then break; fi
+            sleep 1
+          done
+
       - name: Build and test
+        env:
+          REDIS_HOST: 127.0.0.1
         run: ./gradlew build --no-daemon
+
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f guard-redis || true
 
   ci:
     needs: [build]
