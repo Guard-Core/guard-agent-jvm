@@ -1,0 +1,293 @@
+name: Release
+
+# Agent release gate for guard-agent-jvm. The engine-before-agent rule is
+# mechanical: the pre-flight job refuses to run anything unless BOTH engine
+# artifacts (com.guard-core:guard-core-engine and com.guard-core:guard-core at
+# the lockstep version pinned in gradle/libs.versions.toml) are live on Maven
+# Central - and this is load-bearing, not ceremony: in composite-OFF mode the
+# build itself resolves the facade coordinates (compile-only) from the
+# repositories. The publish job builds with GUARD_CORE_USE_COMPOSITE=false;
+# the published POM carries no guard-core dependency (engine-free at runtime,
+# like the Go agent library).
+#
+# Bare vX.Y.z tags only (v3.2.2). The tag-consistency job also enforces the
+# version flip: a tag pushed while build.gradle.kts still carries
+# 3.2.2-SNAPSHOT fails with an explicit message (docs/release.md).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  pre-flight:
+    name: Engine artifacts live on Maven Central
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify the engine artifacts are live on Maven Central
+        run: |
+          set -euo pipefail
+          version=$(grep -m1 '^guardCore = ' gradle/libs.versions.toml | cut -d'"' -f2)
+          if [ -z "$version" ]; then
+            echo "could not read the guardCore lockstep version from gradle/libs.versions.toml"
+            exit 1
+          fi
+          for artifact in guard-core-engine guard-core; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              "https://repo1.maven.org/maven2/com/guard-core/${artifact}/${version}/${artifact}-${version}.pom" \
+              || echo 000)
+            if [ "$code" != "200" ]; then
+              echo "com.guard-core:${artifact}:${version} is NOT live on Maven Central (HTTP ${code})."
+              echo "Engine-before-adapters is a hard ordering rule: run the guard-core-jvm release first"
+              echo "(tag, GitHub release, Portal release clicks; see its docs/release.md), then re-drive"
+              echo "this workflow."
+              exit 1
+            fi
+            echo "ok: com.guard-core:${artifact}:${version} is live on Maven Central"
+          done
+
+  test:
+    name: Test at tag (JDK 17)
+    needs: [pre-flight]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Same engine checkout as ci.yml (the composite default for tests).
+      - name: Checkout engine (guard-core-jvm at the pinned ref)
+        run: |
+          git clone https://github.com/Guard-Core/guard-core-jvm.git guard-core-jvm
+          cd guard-core-jvm
+          git checkout 5f4ea56ab026f00313dfd840ab7d05757afb6400
+
+      # The Redis-backed persistence tests need a live Redis (the same
+      # service shape the guard-core-jvm CI runs).
+      - name: Start Redis
+        run: |
+          docker run -d --name guard-redis -p 6379:6379 redis:7-alpine
+          for _ in $(seq 1 30); do
+            if docker exec guard-redis redis-cli ping | grep -q PONG; then break; fi
+            sleep 1
+          done
+
+      - name: Build and test
+        env:
+          REDIS_HOST: 127.0.0.1
+        run: ./gradlew build --no-daemon
+
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f guard-redis || true
+
+  tag-consistency:
+    name: Tag matches the project version
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The in-file version is the source of truth (the guard-core-rs
+      # precedent): the release PR flips it, the tag must equal it, and a
+      # leftover -SNAPSHOT means the release PR forgot the flip.
+      - name: Verify bare tag equals the project version
+        run: |
+          set -euo pipefail
+          case "${GITHUB_REF_NAME}" in
+            v[0-9]*.[0-9]*.[0-9]*)
+              ;;
+            *)
+              echo "refusing non-bare tag '${GITHUB_REF_NAME}': use bare vX.Y.z (v3.2.2, no suffixes)"
+              exit 1
+              ;;
+          esac
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(grep -m1 'version = "' build.gradle.kts | sed 's/^.*version = "\([^"]*\)".*$/\1/')
+          if [ -z "$version" ]; then
+            echo "could not read the project version from build.gradle.kts"
+            exit 1
+          fi
+          case "$version" in
+            *-SNAPSHOT)
+              echo "project version is ${version}: the release PR forgot the version flip (docs/release.md, version-flip checklist)"
+              exit 1
+              ;;
+          esac
+          if [ "$tag" != "$version" ]; then
+            echo "tag v$tag does not match the project version $version"
+            exit 1
+          fi
+          echo "ok: bare tag v$tag matches the project version $version"
+
+  publish:
+    name: Publish to Maven Central (Central Portal)
+    needs: [tag-consistency]
+    # The tag push runs the gates; the publish runs on GitHub release creation
+    # and can be re-driven with workflow_dispatch after a partial failure.
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Check publishing credentials and GPG inputs are present
+        env:
+          CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for secret in CENTRAL_PORTAL_USERNAME CENTRAL_PORTAL_PASSWORD GPG_PRIVATE_KEY GPG_PASSPHRASE; do
+            if [ -z "${!secret}" ]; then
+              echo "secret ${secret} is not set"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo ""
+            echo "Maven Central publishing needs four repository secrets:"
+            echo "  CENTRAL_PORTAL_USERNAME / CENTRAL_PORTAL_PASSWORD  (Portal user token)"
+            echo "  GPG_PRIVATE_KEY / GPG_PASSPHRASE                   (armored signing key)"
+            echo "Setup: docs/release.md, prerequisites section."
+            exit 1
+          fi
+          echo "ok: all four publishing secrets are present"
+
+      # Changed-only rerun safety: skip when this artifact is already live.
+      - name: Check whether this artifact is already on Maven Central
+        id: artifact
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "https://repo1.maven.org/maven2/com/guard-core/guard-agent-jvm/${version}/guard-agent-jvm-${version}.pom" \
+            || echo 000)
+          case "$code" in
+            200)
+              echo "com.guard-core:guard-agent-jvm ${version} is already live on Maven Central; nothing to do"
+              echo "state=skip" >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo "com.guard-core:guard-agent-jvm ${version} is not on Maven Central; queued to publish"
+              echo "state=publish" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "repo1.maven.org returned HTTP ${code}; refusing to publish against unknown registry state"
+              exit 1
+              ;;
+          esac
+
+      # GUARD_CORE_USE_COMPOSITE=false: no includeBuild; the compile-only
+      # facade coordinates resolve from the repositories (mavenLocal, then
+      # Maven Central) and the POM stays engine-free.
+      - name: Build the guard-agent-jvm staging bundle (no composite)
+        if: steps.artifact.outputs.state == 'publish'
+        env:
+          GUARD_CORE_USE_COMPOSITE: "false"
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: ./gradlew publishMavenPublicationToCentralStagingRepository --no-daemon
+
+      - name: Upload and validate the guard-agent-jvm deployment
+        if: steps.artifact.outputs.state == 'publish'
+        env:
+          CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          token=$(printf '%s:%s' "$CENTRAL_PORTAL_USERNAME" "$CENTRAL_PORTAL_PASSWORD" | base64 | tr -d '\n')
+          rm -f central-bundle.zip
+          (cd build/central-staging && zip -qr "$GITHUB_WORKSPACE/central-bundle.zip" .)
+          deployment=""
+          for _attempt in 1 2 3; do
+            response=$(curl -sS --fail-with-body -X POST \
+              -H "Authorization: Bearer ${token}" \
+              -F "bundle=@central-bundle.zip;type=application/octet-stream" \
+              "https://central.sonatype.com/api/v1/publisher/upload?name=guard-agent-jvm-${version}&publishingType=USER_MANAGED") \
+              && deployment=$(echo "$response" | jq -r '.deploymentId') && break
+            echo "upload attempt ${_attempt} failed; retrying in 30s"
+            sleep 30
+          done
+          if [ -z "$deployment" ] || [ "$deployment" = "null" ]; then
+            echo "guard-agent-jvm upload failed after 3 attempts"
+            exit 1
+          fi
+          echo "guard-agent-jvm deployment: ${deployment}"
+          for _ in $(seq 1 30); do
+            state=$(curl -sS -X POST \
+              -H "Authorization: Bearer ${token}" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=${deployment}" | jq -r '.deploymentState')
+            echo "validation state: ${state}"
+            case "$state" in
+              VALIDATED)
+                echo "guard-agent-jvm ${version} is VALIDATED; release it from the Portal UI (Deployments)"
+                exit 0
+                ;;
+              PUBLISHED)
+                echo "guard-agent-jvm ${version} is PUBLISHED"
+                exit 0
+                ;;
+              FAILED)
+                curl -sS -X POST -H "Authorization: Bearer ${token}" \
+                  "https://central.sonatype.com/api/v1/publisher/status?id=${deployment}" | jq .
+                echo "guard-agent-jvm deployment failed Portal validation"
+                exit 1
+                ;;
+            esac
+            sleep 30
+          done
+          echo "validation did not settle in 15 minutes; inspect deployment ${deployment} in the Portal UI, then re-drive this workflow"
+          exit 1
+
+      - name: Summary
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          echo "Publish run for guard-agent-jvm ${version} finished. Operator steps:"
+          echo "  1. Release the VALIDATED deployment in the Portal UI (central.sonatype.com, Deployments)."
+          echo "  2. Verify repo1.maven.org serves com.guard-core:guard-agent-jvm:${version}."
+          echo "  3. Run the post-release audits in docs/release.md."
