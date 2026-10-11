@@ -6,7 +6,8 @@ rootProject.name = "guard-agent-jvm"
 // The engine artifact com.guardcore:guard-core is not on Maven Central until
 // the W8 release. Until then the engine is built from source via a composite
 // build: CI (and local builds) check out Guard-Core/guard-core-jvm at the
-// PINNED REF 5f4ea56ab026f00313dfd840ab7d05757afb6400 as the sibling directory ./guard-core-jvm, and this
+// PINNED REF 5f4ea56ab026f00313dfd840ab7d05757afb6400 as the sibling directory ./guard-core-jvm,
+// and this
 // block substitutes the declared coordinates com.guardcore:guard-core with
 // the included build's project. The declared dependency coordinates stay
 // com.guardcore:guard-core:4.3.2 (lockstep version per the family versioning
