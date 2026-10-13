@@ -15,7 +15,7 @@ plugins {
 // standard practice for hyphenated domains.
 group = "com.guard-core"
 
-version = "3.2.2-SNAPSHOT"
+version = "3.2.3-SNAPSHOT"
 
 // Section 14.3 lockfile analog: every configuration resolves against the
 // committed gradle.lockfile. A dependency change without

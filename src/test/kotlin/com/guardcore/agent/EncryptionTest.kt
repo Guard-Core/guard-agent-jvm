@@ -94,6 +94,17 @@ class EncryptionTest {
     assertFailsWith<EncryptionError> { encryptor.decrypt(v.tamperedCiphertextB64, "") }
     val aadVector = loadVectors()[3]
     assertFailsWith<EncryptionError> { encryptor.decrypt(aadVector.ciphertextB64, "wrong") }
+    // The guard-agent 3.2.3 tamper fidelity improvement: tamper by XOR-flipping the
+    // last encrypted byte (inside the GCM tag) instead of appending, so the
+    // rejection always exercises authentication and can never pass on a length
+    // check (ports test_encryption.py test_decrypt_tampered_payload).
+    val encrypted = encryptor.encrypt(linkedMapOf<String, Any?>("test" to "value"), "")
+    val encryptedBytes = decodeUrlsafeBase64(encrypted)
+    encryptedBytes[encryptedBytes.size - 1] =
+        (encryptedBytes[encryptedBytes.size - 1].toInt() xor 0xFF).toByte()
+    assertFailsWith<EncryptionError> {
+      encryptor.decrypt(encodeUrlsafeBase64(encryptedBytes), "")
+    }
   }
 
   @Test

@@ -7,7 +7,7 @@ coroutines = "1.11.0"
 spotless = "8.10.4"
 detekt = "1.23.8"
 lettuce = "6.7.1.RELEASE"
-guardCore = "4.3.2"
+guardCore = "4.3.3"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }

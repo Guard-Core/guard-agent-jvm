@@ -26,7 +26,7 @@ ___
 
 ## Status
 
-W7 real port, `3.2.2-SNAPSHOT`: the agent is a TRUE PORT of [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2 (~3.8k non-test LOC), behavior 1:1 with byte-exact observable surfaces (wire payloads, header names, event/metric model shapes, config keys, AES-GCM and HMAC parameters pinned against the Go test vectors). No release yet: the artifact ships with the 3.2.2 tag after the family's W8 certification.
+W7 real port, `3.2.3-SNAPSHOT`: the agent is a TRUE PORT of [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2 (~3.8k non-test LOC), behavior 1:1 with byte-exact observable surfaces (wire payloads, header names, event/metric model shapes, config keys, AES-GCM and HMAC parameters pinned against the Go test vectors). No release yet: the artifact ships with the 3.2.3 tag after the family's W8 certification. The 3.2.3 line mirrors the guard-agent 3.2.3 release (version reporting lockstep with the engines at guard-core 4.3.3).
 
 ## What this is
 
@@ -42,7 +42,7 @@ W7 real port, `3.2.2-SNAPSHOT`: the agent is a TRUE PORT of [guard-agent-go](htt
 
 ## Install
 
-Not published yet. The first artifact ships with the 3.2.2 release (coordinates `com.guard-core:guard-agent-jvm:3.2.2`). Until then, build from source:
+Not published yet. The first artifact ships with the 3.2.3 release (coordinates `com.guard-core:guard-agent-jvm:3.2.3`). Until then, build from source:
 
 ```sh
 git clone https://github.com/Guard-Core/guard-core-jvm.git ../guard-core-jvm   # engine, pinned ref 5f4ea56
@@ -174,7 +174,7 @@ Start from `defaultConfig()` and override. `retryAttempts` and `compressionThres
 ./gradlew test           # tests only
 ```
 
-The Redis-backed persistence tests PING `REDIS_HOST` (default `127.0.0.1:6379`) and skip themselves when it is unreachable; CI runs a `redis:7-alpine` container and checks out the engine at the pinned ref. The engine dependency (`com.guard-core:guard-core:4.3.2`, groupId com.guard-core, the Central Portal namespace) is compile-only and lives behind a composite-build substitution (`settings.gradle.kts`), mirroring guard-agent-go whose library core is engine-free.
+The Redis-backed persistence tests PING `REDIS_HOST` (default `127.0.0.1:6379`) and skip themselves when it is unreachable; CI runs a `redis:7-alpine` container and checks out the engine at the pinned ref. The engine dependency (`com.guard-core:guard-core:4.3.3`, groupId com.guard-core, the Central Portal namespace) is compile-only and lives behind a composite-build substitution (`settings.gradle.kts`), mirroring guard-agent-go whose library core is engine-free.
 
 ## Links
 
