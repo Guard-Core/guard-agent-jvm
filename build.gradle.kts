@@ -39,6 +39,7 @@ dependencies {
   // Redis persistence (guard-agent-go pins go-redis v9; the JVM family pin
   // is the same major line the guard-core-jvm engine uses).
   implementation(libs.lettuce.core)
+  implementation(platform(libs.netty.bom))
 
   // The facade sink contract (AgentHandlerProtocol): compile-only so the
   // published artifact stays transitive-free, mirroring the engine-free Go

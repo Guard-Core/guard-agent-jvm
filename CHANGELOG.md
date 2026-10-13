@@ -4,6 +4,7 @@ All notable changes to guard-agent-jvm are documented here. The version line mir
 
 ## Unreleased
 
+- Dependencies: netty is pinned to 4.1.139.Final through `platform(io.netty:netty-bom)`. lettuce-core 6.8.2 declares netty 4.1.125, which carries twelve advisories fixed by 4.1.137 at the latest. The pin is declared here as well as in the guard-core-jvm facade, so this lockfile stays the same whichever engine revision the build resolves. All twelve netty osv-scanner suppressions are removed.
 - The agent now fills `AgentConfig.guardCoreVersion` at construction from the guard-core-jvm engine found on the runtime classpath (read reflectively, so the engine stays an optional dependency) when the config leaves it empty, so Java projects report their engine version like the Go and PHP agents. A user-set value always wins.
 
 ## [3.2.3] - 2026-10-13

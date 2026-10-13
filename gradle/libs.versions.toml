@@ -7,6 +7,7 @@ coroutines = "1.11.0"
 spotless = "8.10.4"
 detekt = "1.23.8"
 lettuce = "6.8.2.RELEASE"
+netty = "4.1.139.Final"
 guardCore = "4.3.3"
 
 [libraries]
@@ -14,6 +15,7 @@ kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
+netty-bom = { module = "io.netty:netty-bom", version.ref = "netty" }
 # The engine facade (groupId com.guard-core, the Central Portal namespace): substituted with the pinned
 # guard-core-jvm includeBuild checkout (settings.gradle.kts). Compile-only in
 # main: only the AgentHandlerProtocol sink contract is referenced, and the Go
