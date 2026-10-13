@@ -248,7 +248,7 @@ jobs:
               -H "Authorization: Bearer ${token}" \
               -F "bundle=@central-bundle.zip;type=application/octet-stream" \
               "https://central.sonatype.com/api/v1/publisher/upload?name=guard-agent-jvm-${version}&publishingType=USER_MANAGED") \
-              && deployment=$(echo "$response" | jq -r '.deploymentId') && break
+              && deployment=$(printf '%s' "$response" | tr -d '[:space:]') && break
             echo "upload attempt ${_attempt} failed; retrying in 30s"
             sleep 30
           done
