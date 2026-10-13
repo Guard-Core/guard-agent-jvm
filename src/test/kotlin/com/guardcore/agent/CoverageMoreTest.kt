@@ -308,7 +308,7 @@ class CoverageMoreTest {
         metric.tags = linkedMapOf("pad" to pad)
         agent.sendMetric(metric)
       }
-      mock.setMaxBody(320)
+      mock.setMaxBody(350)
       mock.failNext(2)
       val err = agent.flush()
       assertTrue(err != null, "the failed split must surface a synthetic error")
