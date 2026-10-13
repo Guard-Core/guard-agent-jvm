@@ -1,8 +1,13 @@
 # Changelog
 
-All notable changes to guard-agent-jvm are documented here. The version line mirrors guard-agent 3.2.2 (the family versioning law); releases ship as v-prefixed git tags after the family's W8 certification.
+All notable changes to guard-agent-jvm are documented here. The version line mirrors guard-agent 3.2.3 (the family versioning law); releases ship as v-prefixed git tags after the family's W8 certification.
 
-## Unreleased (3.2.2-SNAPSHOT)
+## Unreleased (3.2.3-SNAPSHOT)
+
+### Changed (W10, the 3.2.3 sync; nothing released)
+
+- Version reporting lockstep: the agent moves to 3.2.3, mirroring the guard-agent 3.2.3 release and the engines at guard-core 4.3.3 (the family versioning law). `AGENT_VERSION`, the project version, the README/docs surfaces, and the engine pin (`guardCore` 4.3.3) move together.
+- Tamper-test fidelity: the encryption tamper test now flips the last encrypted byte (inside the GCM tag) via `last ^ 0xFF` instead of appending a byte, so the rejection always exercises authenticated decryption and can never pass on a length check (ports the guard-agent 3.2.3 `test_decrypt_tampered_payload` improvement).
 
 ### Changed (W8b, release engineering; nothing released)
 

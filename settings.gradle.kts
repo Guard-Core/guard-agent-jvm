@@ -26,7 +26,7 @@ pluginManagement {
 // The substitution ends when the engine artifacts hit Maven Central (the
 // release choreography in docs/release.md): release builds run composite-OFF.
 //
-// The declared dependency coordinates stay com.guard-core:guard-core:4.3.2
+// The declared dependency coordinates stay com.guard-core:guard-core:4.3.3
 // (groupId com.guard-core is the Central Portal namespace; Kotlin packages
 // stay com.guardcore.*; lockstep version per the family versioning law). The
 // coupling is deliberately thin: only the AgentHandlerProtocol sink contract

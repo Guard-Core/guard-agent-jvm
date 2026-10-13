@@ -8,8 +8,8 @@
 
 ## Coordinates
 
-Not published yet: the first artifact ships with the 3.2.2 release
-(`com.guard-core:guard-agent-jvm:3.2.2`). The group ID is `com.guard-core`
+Not published yet: the first artifact ships with the 3.2.3 release
+(`com.guard-core:guard-agent-jvm:3.2.3`). The group ID is `com.guard-core`
 (the Central Portal namespace); Kotlin packages stay `com.guardcore.*`. Until
 then, build from source:
 
