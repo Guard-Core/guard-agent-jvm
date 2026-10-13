@@ -8,10 +8,15 @@
 
 ## Coordinates
 
-Not published yet: the first artifact ships with the 3.2.3 release
-(`com.guard-core:guard-agent-jvm:3.2.3`). The group ID is `com.guard-core`
-(the Central Portal namespace); Kotlin packages stay `com.guardcore.*`. Until
-then, build from source:
+Published on Maven Central as `com.guard-core:guard-agent-jvm:3.2.3`. The group ID is `com.guard-core` (the Central Portal namespace); Kotlin packages stay `com.guardcore.*`.
+
+```kotlin
+dependencies {
+    implementation("com.guard-core:guard-agent-jvm:3.2.3")
+}
+```
+
+To build from source instead:
 
 ```bash
 git clone https://github.com/Guard-Core/guard-core-jvm.git ../guard-core-jvm   # engine, pinned ref 2415a77

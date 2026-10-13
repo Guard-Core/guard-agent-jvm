@@ -42,7 +42,15 @@ ___
 
 ## Install
 
-Not published yet. The first artifact ships with the 3.2.3 release (coordinates `com.guard-core:guard-agent-jvm:3.2.3`). Until then, build from source:
+Published on Maven Central:
+
+```kotlin
+dependencies {
+    implementation("com.guard-core:guard-agent-jvm:3.2.3")
+}
+```
+
+To build from source instead:
 
 ```sh
 git clone https://github.com/Guard-Core/guard-core-jvm.git ../guard-core-jvm   # engine, pinned ref 2415a77
