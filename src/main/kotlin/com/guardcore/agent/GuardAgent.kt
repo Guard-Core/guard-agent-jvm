@@ -156,6 +156,7 @@ internal constructor(
     internal const val MAX_TRACKED_ERRORS: Int = 10
     internal const val KIND_EVENT: String = "event"
     internal const val KIND_METRIC: String = "metric"
+    internal const val ENGINE_CLASS_NAME: String = "com.guardcore.engine.GuardCoreEngine"
 
     /**
      * agent.go `New`: validates cfg (filling defaults), resolves the install id, and returns an
@@ -170,6 +171,9 @@ internal constructor(
       val normalized = normalize(config)
       normalized.error?.let { throw it }
       val cfg = normalized.cfg
+      if (cfg.guardCoreVersion.isEmpty()) {
+        cfg.guardCoreVersion = detectGuardCoreVersion(ENGINE_CLASS_NAME)
+      }
       for (w in normalized.warnings) {
         logger.warning("guardagent: $w")
       }

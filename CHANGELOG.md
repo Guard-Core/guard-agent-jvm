@@ -2,6 +2,10 @@
 
 All notable changes to guard-agent-jvm are documented here. The version line mirrors guard-agent 3.2.3 (the family versioning law); releases ship as v-prefixed git tags after the family's W8 certification.
 
+## Unreleased
+
+- The agent now fills `AgentConfig.guardCoreVersion` at construction from the guard-core-jvm engine found on the runtime classpath (read reflectively, so the engine stays an optional dependency) when the config leaves it empty, so Java projects report their engine version like the Go and PHP agents. A user-set value always wins.
+
 ## [3.2.3] - 2026-10-13
 
 ### Changed (release train)

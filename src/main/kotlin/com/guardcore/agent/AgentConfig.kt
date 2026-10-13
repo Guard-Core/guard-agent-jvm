@@ -463,6 +463,21 @@ internal fun normalize(
   return NormalizedConfig(out, warnings, problems)
 }
 
+/**
+ * agent.go `guardCoreVersionFromBuildInfo`: reads the static `VERSION` field of the engine class
+ * reflectively at runtime. The engine is a compile-only dependency, so it may be absent, and a
+ * direct reference to the Kotlin `const val` would inline the compile-time version. Returns "" when
+ * the class or field is missing or unreadable; never throws.
+ */
+internal fun detectGuardCoreVersion(className: String): String =
+    try {
+      Class.forName(className).getField("VERSION").get(null) as? String ?: ""
+    } catch (e: Exception) {
+      ""
+    } catch (e: LinkageError) {
+      ""
+    }
+
 internal class NormalizedConfig(
     val cfg: AgentConfig,
     val warnings: List<String>,
