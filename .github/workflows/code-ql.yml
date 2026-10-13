@@ -23,11 +23,11 @@ jobs:
 
       # The engine dependency: the composite includeBuild needs the pinned
       # guard-core-jvm checkout next to the repository (same as ci.yml).
-      - name: Checkout engine (guard-core-jvm @ 5f4ea56)
+      - name: Checkout engine (guard-core-jvm @ 2415a77)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Guard-Core/guard-core-jvm
-          ref: 5f4ea56ab026f00313dfd840ab7d05757afb6400
+          ref: 2415a77b35f99dbaa96ad821b7ef4571992e18f4
           path: guard-core-jvm
           persist-credentials: false
 

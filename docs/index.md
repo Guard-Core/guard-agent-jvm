@@ -5,7 +5,7 @@ Buffers security events, metrics, and agent status locally and ships them to
 the Guard Core App ingestion API with at-least-once delivery: nothing
 acknowledged is lost, nothing unacknowledged is forgotten.
 
-- **Status**: 3.2.3-SNAPSHOT, pre-release; a TRUE PORT of
+- **Status**: 3.2.3, released; a TRUE PORT of
   [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2
   (behavior 1:1 with byte-exact observable surfaces: wire payloads, header
   names, event/metric model shapes, config keys, AES-GCM and HMAC parameters

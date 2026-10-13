@@ -14,7 +14,7 @@ Not published yet: the first artifact ships with the 3.2.3 release
 then, build from source:
 
 ```bash
-git clone https://github.com/Guard-Core/guard-core-jvm.git ../guard-core-jvm   # engine, pinned ref 5f4ea56
+git clone https://github.com/Guard-Core/guard-core-jvm.git ../guard-core-jvm   # engine, pinned ref 2415a77
 git clone https://github.com/Guard-Core/guard-agent-jvm.git
 cd guard-agent-jvm && ./gradlew build
 ```
