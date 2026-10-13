@@ -260,7 +260,7 @@ jobs:
           for _ in $(seq 1 30); do
             state=$(curl -sS -X POST \
               -H "Authorization: Bearer ${token}" \
-              "https://central.sonatype.com/api/v1/publisher/status?id=${deployment}" | jq -r '.deploymentState')
+              "https://central.sonatype.com/api/v1/publisher/status?id=${deployment}" | jq -r '.deploymentState' || true)
             echo "validation state: ${state}"
             case "$state" in
               VALIDATED)
