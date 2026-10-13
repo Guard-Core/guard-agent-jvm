@@ -15,7 +15,7 @@ plugins {
 // standard practice for hyphenated domains.
 group = "com.guard-core"
 
-version = "3.2.3-SNAPSHOT"
+version = "3.2.3"
 
 // Section 14.3 lockfile analog: every configuration resolves against the
 // committed gradle.lockfile. A dependency change without
@@ -23,6 +23,10 @@ version = "3.2.3-SNAPSHOT"
 // osv-scanner dependency-audit job reads.
 dependencyLocking {
   lockAllConfigurations()
+  // The family's own artifacts stay out of the lock state: CI substitutes the
+  // composite engine build, the release publish job resolves the same version
+  // from Maven Central, and the catalog pins it exactly either way.
+  ignoredDependencies.add("com.guard-core:*")
 }
 
 kotlin {

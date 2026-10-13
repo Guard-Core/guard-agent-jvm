@@ -23,7 +23,7 @@ Guard-Core/guard-core-jvm at the pinned ref as the sibling directory
 
 ```bash
 git clone https://github.com/Guard-Core/guard-core-jvm ../guard-core-jvm
-git -C ../guard-core-jvm checkout 5f4ea56
+git -C ../guard-core-jvm checkout 2415a77
 ./gradlew build          # detekt + ktfmt check + the full test suite
 ```
 
