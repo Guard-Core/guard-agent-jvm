@@ -461,6 +461,7 @@ class PersistenceIntegrationTest {
     val agent = newIntegrationAgent(host, mock.url)
     try {
       for (i in 1..2) agent.sendEvent(testEvent(i))
+      agent.awaitPersists()
       val keys = scanAll(client, INTEGRATION_REDIS_PREFIX + ":*")
       assertEquals(2, keys.size, "persisted keys")
       for (key in keys) {
@@ -494,6 +495,7 @@ class PersistenceIntegrationTest {
     val agent = newIntegrationAgent(host, mock.url)
     try {
       agent.sendMetric(testMetric(1))
+      agent.awaitPersists()
       assertEquals(
           1,
           scanAll(client, INTEGRATION_REDIS_PREFIX + ":*").size,
@@ -524,6 +526,7 @@ class PersistenceIntegrationTest {
     val first = newIntegrationAgent(host, "http://127.0.0.1:1")
     run {
       for (i in 1..2) first.sendEvent(testEvent(i))
+      first.awaitPersists()
       assertTrue(first.flush() != null, "flush against a down endpoint must fail")
       assertTrue(
           first.stop() != null,
@@ -606,6 +609,7 @@ class PersistenceIntegrationTest {
           mock.callsTo(EVENTS_PATH).size,
           "telemetry must still be delivered without redis",
       )
+      agent.awaitPersists()
       val stats = agent.stats()
       assertTrue(stats.redisPersistFailures > 0, "redis failures must be counted: $stats")
       assertTrue(stats.durabilityDegraded, "durability must be reported degraded")

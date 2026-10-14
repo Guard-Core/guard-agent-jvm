@@ -346,15 +346,11 @@ class CoverageMoreTest {
     agent.persist = deadPersist
     val poisoned =
         SecurityEvent(null, "e", metadata = linkedMapOf<String, Any?>("chan" to Thread()))
-    var key: String
-    synchronized(agent.mutex) { key = agent.reserveEventKeyLocked(poisoned) }
-    assertEquals("", key, "an unserializable event must not reserve a key")
+    agent.persistEventNow(GuardAgent.BufferedEvent(poisoned, ""))
     assertEquals(1L, agent.stats().redisPersistFailures, "serialization failures must count")
-    var metricKey: String
-    synchronized(agent.mutex) {
-      metricKey = agent.reserveMetricKeyLocked(SecurityMetric(null, MetricTypes.REQUEST_COUNT))
-    }
-    assertEquals("", metricKey, "a failing store must not reserve a metric key")
+    agent.persistMetricNow(
+        GuardAgent.BufferedMetric(SecurityMetric(null, MetricTypes.REQUEST_COUNT), ""),
+    )
     assertEquals(2L, agent.stats().redisPersistFailures, "store failures must count")
     deadPersist.close()
   }
