@@ -1,4 +1,5 @@
 site_name: guard-agent-jvm
+site_url: https://guard-core.github.io/guard-agent-jvm/
 site_description: Telemetry agent for the Guard ecosystem on the JVM - buffered, signed, at-least-once security event shipping
 site_author: Renn F
 repo_url: https://github.com/Guard-Core/guard-agent-jvm
