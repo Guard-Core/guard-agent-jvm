@@ -83,7 +83,7 @@ jobs:
         run: |
           git clone https://github.com/Guard-Core/guard-core-jvm.git guard-core-jvm
           cd guard-core-jvm
-          git checkout 2415a77b35f99dbaa96ad821b7ef4571992e18f4
+          git checkout 6cde4afd08a0172c5f6a41eb8e29ec754288782e
 
       # The Redis-backed persistence tests need a live Redis (the same
       # service shape the guard-core-jvm CI runs).
