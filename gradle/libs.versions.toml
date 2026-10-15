@@ -8,7 +8,7 @@ spotless = "8.10.4"
 detekt = "1.23.8"
 lettuce = "6.8.2.RELEASE"
 netty = "4.1.139.Final"
-guardCore = "4.3.3"
+guardCore = "4.4.0"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }

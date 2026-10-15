@@ -53,7 +53,7 @@ dependencies {
 To build from source instead:
 
 ```sh
-git clone https://github.com/Guard-Core/guard-core-jvm.git ../guard-core-jvm   # engine, pinned ref 6cde4af
+git clone https://github.com/Guard-Core/guard-core-jvm.git ../guard-core-jvm   # engine, pinned ref 7711606
 git clone https://github.com/Guard-Core/guard-agent-jvm.git
 cd guard-agent-jvm && ./gradlew build
 ```
