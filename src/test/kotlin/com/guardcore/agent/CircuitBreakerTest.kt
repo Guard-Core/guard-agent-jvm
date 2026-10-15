@@ -33,7 +33,7 @@ class CircuitBreakerTest {
     repeat(BREAKER_FAILURE_THRESHOLD) { cb.failure() }
     now = base.plus(BREAKER_RECOVERY_TIMEOUT)
     cb.admit()
-    assertEquals("half_open", cb.state(), "state after the recovery window")
+    assertEquals("HALF_OPEN", cb.state(), "state after the recovery window")
     // A failure while half-open reopens the breaker with a fresh window.
     now = base.plus(BREAKER_RECOVERY_TIMEOUT).plusSeconds(1)
     cb.failure()
@@ -42,7 +42,7 @@ class CircuitBreakerTest {
     cb.admit()
     cb.success()
     assertFalse(cb.open(), "success must close the breaker")
-    assertEquals("closed", cb.state())
+    assertEquals("CLOSED", cb.state())
   }
 
   @Test

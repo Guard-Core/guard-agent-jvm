@@ -26,7 +26,7 @@ ___
 
 ## Status
 
-`3.2.4`: the agent is a TRUE PORT of [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2 (~3.8k non-test LOC), behavior 1:1 with byte-exact observable surfaces (wire payloads, header names, event/metric model shapes, config keys, AES-GCM and HMAC parameters pinned against the Go test vectors). Released on Maven Central as `com.guard-core:guard-agent-jvm:3.2.4`. The 3.2.4 line mirrors the guard-agent 3.2.4 release (version reporting lockstep with the engines at guard-core 4.3.3).
+`3.2.4`: the agent is a TRUE PORT of [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2 (~3.8k non-test LOC), carrying the Go 3.2.3 (engine version reporting) and 3.2.4 (Redis persistence off the buffer lock) changes, behavior 1:1 with byte-exact observable surfaces (wire payloads, header names, event/metric model shapes, config keys, AES-GCM and HMAC parameters pinned against the Go test vectors). Released on Maven Central as `com.guard-core:guard-agent-jvm:3.2.4`. The 3.2.4 line mirrors the guard-agent 3.2.4 release (version reporting lockstep with the engines at guard-core 4.3.3).
 
 ## What this is
 
@@ -88,7 +88,7 @@ fun main() {
 
     // ...
 
-    agent.stop() // cancels the loops, then one final forced flush
+    agent.stop() // cancels the loops, then one final flush under the backoff gates
 }
 ```
 
@@ -127,24 +127,25 @@ Every bridge entry point dispatches to the IO dispatcher and swallows agent erro
 | Buffer full, `raise` | `sendEvent`/`sendMetric` throw `BufferFullError` (`matchesKind(ErrorKind.BUFFER_FULL)`) |
 | Flush trigger | Combined occupancy at or above `bufferSize * highWatermarkRatio`, or `flushInterval` elapsed |
 | 200 | Confirm: delete persisted records, reset the failure streak |
-| 200 with `success:false` or `errors[]` | Requeue the whole batch in original order (at-least-once: duplicates possible, losses are not) |
+| 200 with `success:false` or `errors[]` | Requeue the whole batch in original order (at-least-once: duplicates possible, losses are not); a 200 body without `success` is accepted |
+| Unparseable or empty-object 200, 202, 204, 3xx, 405, 408 | Transient no-result: retried at once, never opens the breaker |
 | 429 | Honor `Retry-After` (60s default, 300s cap) and retry |
-| 413 | Halve the batch and send both halves; a singleton that still 413s is dropped durably (encrypted batches cannot split, so a 413 drops durably) |
+| 413 | Halve the batch and send both halves (re-encrypting each half when encryption is on); a singleton that still 413s is dropped durably |
 | 400 / 404 / 422 | Permanent: drop durably, never requeue |
 | 401 / 403 / 5xx / network | Retry with `backoffFactor * 2^attempt` (60s cap) |
 | Repeated per-kind failure | Gate that kind for `min(flushInterval * 2^(streak-1), 300s)` |
 | 5 consecutive transport failures | Circuit breaker opens for 60s, then admits one probe (half-open); permanent rejections and 413s are exempt |
-| `status()` | `healthy`, `degraded` (breaker open, 90% occupancy, or >10% lifetime failure rate), or `failed` after `stop` |
+| `status()` | `healthy`, `degraded` (breaker open, 90% occupancy, or >10% lifetime failure rate over events and metrics), or `failed` after `stop` |
 | Redis unavailable | Log, count, keep going; writes pause for 30s after 3 consecutive failures; records expire by TTL |
-| `stop` | Cancel the loops, then one final flush that bypasses the backoff gates |
+| `stop` | Cancel the loops, then one final flush of each kind under its backoff gate |
 
 ### The signature covers the uncompressed body
 
-The ingestion API verifies `X-Payload-Signature` **after** its gzip middleware decompresses the request (`telemetry_router.py`, `payload_signature.py`), so the signature must be an HMAC-SHA256 over the uncompressed JSON. This agent signs before compression and sends `v1=<hex>` accordingly, exactly like guard-agent-go and unlike the Python/TypeScript agents (whose signatures stop verifying under gzip).
+The ingestion API verifies `X-Payload-Signature` **after** its gzip middleware decompresses the request (`telemetry_router.py`, `payload_signature.py`), so the signature must be an HMAC-SHA256 over the uncompressed JSON. This agent signs before compression and sends `v1=<hex>` accordingly, exactly like guard-agent-go and the Python agent (which signs the raw body in `_build_post_body`, then gzips it).
 
 ### Dynamic rules
 
-`getDynamicRules(ctx)` fetches the SaaS rule document from `GET /api/v1/rules` (the full Python-agent `DynamicRules` surface, sparse payloads default-filled like `DynamicRules(**response_data)`) and caches it for the document's `ttl`; a failed poll serves the last known rules. `start` runs a background polling loop on `dynamicRuleInterval`, and `stats().rulesFetched` counts refreshes. `truncatePayload`, `hashIP`, and `KnownEventTypes` round out the host-adapter helper surface.
+`getDynamicRules(ctx)` fetches the SaaS rule document from `GET /api/v1/rules` (the full Python-agent `DynamicRules` surface, sparse payloads default-filled like `DynamicRules(**response_data)`) and caches it for the document's `ttl`; a failed poll serves the last known rules. When `projectId` is set, `start` runs a background polling loop on `dynamicRuleInterval` (without a project id there is no loop), and `stats().rulesFetched` counts refreshes. `truncatePayload`, `hashIP`, and `KnownEventTypes` round out the host-adapter helper surface.
 
 ## Configuration
 

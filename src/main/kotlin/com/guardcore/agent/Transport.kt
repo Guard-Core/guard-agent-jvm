@@ -43,8 +43,8 @@ public enum class SendOutcome {
   ACCEPTED,
 
   /**
-   * A 200 carried success:false / errors, the body was malformed, or an unexpected 4xx arrived:
-   * requeue.
+   * A 200 carried success:false / errors, or an unusable response (unparseable or empty 200, 202,
+   * 204, 3xx, 405, 408) outlasted the retry budget: requeue.
    */
   PARTIAL,
 
@@ -132,6 +132,7 @@ internal class Transport(
 
   internal val requestsSent = AtomicLong(0)
   internal val requestsFailed = AtomicLong(0)
+  internal val bytesSent = AtomicLong(0)
 
   // Test seams: package variables so tests can deterministically exercise
   // the defensive serialization/compression failure paths. Production always
@@ -213,7 +214,7 @@ internal class Transport(
           )
           return SendOutcome.PARTIAL to err
         }
-    val (outcome, err) = sendBatch(ctx, EVENTS_PATH, raw, evaluate = true)
+    val (outcome, err) = sendBatch(ctx, EVENTS_PATH, raw)
     if (err is PayloadTooLargeError) {
       return splitOrDropEvents(ctx, events) to null
     }
@@ -263,7 +264,7 @@ internal class Transport(
           )
           return SendOutcome.PARTIAL to err
         }
-    val (outcome, err) = sendBatch(ctx, METRICS_PATH, raw, evaluate = true)
+    val (outcome, err) = sendBatch(ctx, METRICS_PATH, raw)
     if (err is PayloadTooLargeError) {
       return splitOrDropMetrics(ctx, metrics) to null
     }
@@ -280,7 +281,7 @@ internal class Transport(
   /**
    * transport.go `sendEncryptedBatch`: encrypts the events/metrics arrays with AES-256-GCM and
    * POSTs the Python-shaped envelope. Serialization or encryption failure retains the batch
-   * (requeue); a 413 drops durably because an encrypted payload cannot be split.
+   * (requeue); a 413 halves the batch and sends each half re-encrypted, like the reference.
    */
   internal fun sendEncryptedBatch(
       ctx: AgentContext,
@@ -323,14 +324,12 @@ internal class Transport(
           fireHook(ErrorHookStages.ENCRYPTION, err, mapOf("endpoint" to ENCRYPTED_PATH))
           return SendOutcome.PARTIAL to err
         }
-    val (outcome, err) = sendBatch(ctx, ENCRYPTED_PATH, encoded, evaluate = true)
+    val (outcome, err) = sendBatch(ctx, ENCRYPTED_PATH, encoded)
     if (err is PayloadTooLargeError) {
-      logger.warning(
-          "guardagent: encrypted batch exceeds the ingestion payload limit; dropping durably",
-      )
-      requestsFailed.incrementAndGet()
-      fireHook(ErrorHookStages.TRANSPORT_SEND, err, mapOf("endpoint" to ENCRYPTED_PATH))
-      return SendOutcome.PERMANENT to null
+      if (!events.isNullOrEmpty()) {
+        return splitOrDropEvents(ctx, events) to null
+      }
+      return splitOrDropMetrics(ctx, metrics.orEmpty()) to null
     }
     return outcome to err
   }
@@ -357,7 +356,7 @@ internal class Transport(
 
   /**
    * transport.go `sendStatus`: posts the periodic status report. Status is fire-and-forget: any
-   * rejection is logged and counted, never requeued.
+   * rejection is logged and counted as a failed push, never requeued.
    */
   internal fun sendStatus(
       ctx: AgentContext,
@@ -370,11 +369,17 @@ internal class Transport(
           logger.warning("guardagent: serialization failed for status report: ${err.message}")
           return SendOutcome.PARTIAL to err
         }
-    val (outcome, err) = sendBatch(ctx, STATUS_PATH, raw, evaluate = false)
+    val (outcome, err) = sendBatch(ctx, STATUS_PATH, raw)
+    // The reference's send_status turns a PermanentClientError or PayloadTooLargeError into a False
+    // return: a rejected push is a failed push (never a success).
     if (err is PayloadTooLargeError) {
       logger.warning("guardagent: status report exceeds the ingestion payload limit; dropping")
       requestsFailed.incrementAndGet()
-      return SendOutcome.PERMANENT to null
+      return SendOutcome.FAILED to err
+    }
+    if (outcome == SendOutcome.PERMANENT) {
+      requestsFailed.incrementAndGet()
+      return SendOutcome.FAILED to err
     }
     return outcome to err
   }
@@ -442,6 +447,8 @@ internal class Transport(
    */
   internal fun marshalBatch(batch: EventBatch): ByteArray {
     redactBatch(batch, cfg.sensitiveHeaders)
+    batch.events = batch.events ?: emptyList()
+    batch.metrics = batch.metrics ?: emptyList()
     var raw = jsonMarshal(batch)
     if (willCompress(raw.size)) {
       batch.compressed = true
@@ -460,15 +467,14 @@ internal class Transport(
    * enabled, the HMAC signature over the UNCOMPRESSED body, and status-specific outcome handling.
    *
    * Status code handling mirrors guard-agent (Python) _transport_dispatch: 200/201 success (200
-   * evaluated for partial failure when evaluate), 429 honored via capped Retry-After, 413
-   * split-or-drop, 400/404/422 permanent, 401/403 and 5xx and network errors retried with
-   * exponential backoff, any other 4xx treated as a partial failure.
+   * evaluated for partial failure), 429 honored via capped Retry-After, 413 split-or-drop,
+   * 400/404/422 permanent, 401/403 and 5xx and network errors retried with exponential backoff, any
+   * other status a transient no-result retried at once without the breaker.
    */
   internal fun sendBatch(
       ctx: AgentContext,
       path: String,
       raw: ByteArray,
-      evaluate: Boolean,
   ): Pair<SendOutcome, Throwable?> {
     val (wire, contentEncoding) = encodeBody(raw)
     val signature =
@@ -496,7 +502,6 @@ internal class Transport(
       // A pre-canceled context fails the send exactly like Go's
       // http.Client.Do(ctx) refusing to start the request.
       if (ctx.isDone()) {
-        requestsFailed.incrementAndGet()
         return SendOutcome.FAILED to ctx.err()
       }
       val request: HttpRequest
@@ -526,17 +531,18 @@ internal class Transport(
       }
       val response: HttpResponse<ByteArray>
       try {
+        bytesSent.addAndGet(wire.size.toLong())
         response = client.execute(request, wire, ctx)
       } catch (err: ContextDone) {
-        breaker.failure()
-        requestsFailed.incrementAndGet()
+        // A cancelled context is the caller stopping, not a transport fault: asyncio
+        // CancelledError bypasses the reference breaker.
         return SendOutcome.FAILED to err
       } catch (err: java.io.IOException) {
-        breaker.failure()
-        requestsFailed.incrementAndGet()
         if (ctx.isDone()) {
           return SendOutcome.FAILED to ctx.err()
         }
+        breaker.failure()
+        requestsFailed.incrementAndGet()
         if (
             attempt < cfg.retryAttempts &&
                 sleepContext(ctx, retryBackoff(attempt, cfg.backoffFactor))
@@ -555,11 +561,19 @@ internal class Transport(
       when {
         response.statusCode() == 200 || response.statusCode() == 201 -> {
           breaker.success()
-          requestsSent.incrementAndGet()
-          if (!evaluate || response.statusCode() == 201) {
-            return SendOutcome.ACCEPTED to null
+          val (outcome, evalErr) =
+              if (response.statusCode() == 200) evaluateBatchResponse(body)
+              else SendOutcome.ACCEPTED to null
+          if (outcome == SendOutcome.ACCEPTED) {
+            requestsSent.incrementAndGet()
+          } else {
+            requestsFailed.incrementAndGet()
           }
-          return evaluateBatchResponse(body)
+          if (evalErr is NoResultError && attempt < cfg.retryAttempts) {
+            attempt++
+            continue
+          }
+          return outcome to evalErr
         }
         response.statusCode() == 429 -> {
           breaker.failure()
@@ -619,12 +633,16 @@ internal class Transport(
               )
         }
         else -> {
+          // Any status the reference does not list (202, 204, 3xx, 405, 408, ...): a transient
+          // no-result, retried at once, no breaker.
           breaker.success()
+          requestsFailed.incrementAndGet()
+          if (attempt < cfg.retryAttempts) {
+            attempt++
+            continue
+          }
           return SendOutcome.PARTIAL to
-              GuardAgentException(
-                  "guardagent: unexpected status " + response.statusCode(),
-                  ErrorKind.INTERNAL,
-              )
+              NoResultError("guardagent: unexpected status " + response.statusCode())
         }
       }
     }
@@ -650,31 +668,25 @@ internal class Transport(
   }
 
   /**
-   * transport.go `evaluateBatchResponse`: mirrors _evaluate_send_result: a 200 with success:false
-   * or a non-empty errors list is a partial failure; a malformed body is treated the same way so
-   * the batch is requeued rather than lost.
+   * transport.go `evaluateBatchResponse`: mirrors _evaluate_send_result over a 200 body: only an
+   * explicit success:false or a truthy errors value is a partial failure (requeue, no retry); an
+   * unparseable body or an empty JSON object is a no-result ([NoResultError], retried at once); any
+   * other body, including a non-object JSON value or an object without success, is accepted.
    */
   internal fun evaluateBatchResponse(body: ByteArray): Pair<SendOutcome, Throwable?> {
-    val r = BatchResponse()
     val parsed =
         try {
           parseJson(body, useNumber = false)
         } catch (err: Exception) {
           return SendOutcome.PARTIAL to
-              GuardAgentException(
-                  "guardagent: malformed ingest response: ${err.message}",
-                  ErrorKind.INTERNAL,
-              )
+              NoResultError("guardagent: malformed ingest response: ${err.message}")
         }
-    val map = parsed as? Map<String, Any?>
-    if (map == null) {
-      return SendOutcome.PARTIAL to
-          GuardAgentException("guardagent: malformed ingest response", ErrorKind.INTERNAL)
-    }
-    r.success = map["success"] == true
-    r.errors = (map["errors"] as? List<*>)?.map { it?.toString() ?: "" }
-    if (!r.success || !(r.errors.isNullOrEmpty())) {
+    val map = parsed as? Map<*, *> ?: return SendOutcome.ACCEPTED to null
+    if (map["success"] == false || isTruthy(map["errors"])) {
       return SendOutcome.PARTIAL to null
+    }
+    if (map.isEmpty()) {
+      return SendOutcome.PARTIAL to NoResultError("guardagent: empty ingest response object")
     }
     return SendOutcome.ACCEPTED to null
   }
@@ -686,6 +698,27 @@ internal class Transport(
     // java.net.http pools internally; nothing to force-close per client.
   }
 }
+
+/**
+ * Marks a response the reference maps to "no result" (an unparseable or empty-object 200, 202, 204,
+ * 3xx, 405, 408 and any other unlisted status): retried at once, never opens the breaker and is
+ * never accepted (_handle_response returns False, _send_with_retry loops).
+ */
+internal class NoResultError(
+    message: String,
+) : GuardAgentException(message, ErrorKind.INTERNAL)
+
+/** Python truthiness of a decoded JSON value. */
+internal fun isTruthy(v: Any?): Boolean =
+    when (v) {
+      null -> false
+      is Boolean -> v
+      is Number -> v.toDouble() != 0.0
+      is String -> v.isNotEmpty()
+      is Collection<*> -> v.isNotEmpty()
+      is Map<*, *> -> v.isNotEmpty()
+      else -> true
+    }
 
 /**
  * The default jsonMarshal seam target: encoding/json for the agent's wire domain (see [goJson]).

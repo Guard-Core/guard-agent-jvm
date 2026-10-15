@@ -359,7 +359,7 @@ class AgentTest {
   @Test
   fun four13SplitsBatch() {
     val mock = MockIngest()
-    mock.setMaxBody(1024)
+    mock.setMaxBody(1400)
     val tmp = tempDirFor("agent-413-split")
     val agent = newTestAgent(tmp, mock) { c -> c.retryAttempts = 0 }
     try {
@@ -599,7 +599,7 @@ class AgentTest {
           s.state,
           "status must be degraded with an open breaker",
       )
-      assertEquals("open", s.circuitState)
+      assertEquals("OPEN", s.circuitState)
       var sawCircuitOpen = false
       deadline = System.nanoTime() + 2_000_000_000L
       while (!sawCircuitOpen && System.nanoTime() < deadline) {
@@ -619,7 +619,7 @@ class AgentTest {
       while (System.nanoTime() < deadline) {
         agent.flush()
         val status = agent.status()
-        if (status.circuitState == "closed" && agent.stats().eventsSent > 0) {
+        if (status.circuitState == "CLOSED" && agent.stats().eventsSent > 0) {
           return
         }
         Thread.sleep(5)
@@ -643,7 +643,7 @@ class AgentTest {
         assertEquals(null, agent.flush(), "flush $i")
       }
       assertEquals(
-          "closed",
+          "CLOSED",
           agent.status().circuitState,
           "permanent rejections must not trip the breaker",
       )

@@ -118,7 +118,7 @@ class ParityTest {
   @Test
   fun getDynamicRulesSparsePayloadGetsPythonDefaults() {
     val mock = MockIngest()
-    mock.serveRules(200, "{}")
+    mock.serveRules(200, "{\"emergency_mode\":false}")
     val tmp = tempDirFor("parity-rules-sparse")
     val agent = newTestAgent(tmp, mock)
     try {

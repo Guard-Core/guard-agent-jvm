@@ -32,7 +32,7 @@ agent.sendMetric(SecurityMetric(timestamp = null, metricType = MetricTypes.REQUE
 
 // ...
 
-agent.stop() // cancels the loops, then one final forced flush
+agent.stop() // cancels the loops, then one final flush under the backoff gates
 ```
 
 Behavioral surface (1:1 with guard-agent-go):

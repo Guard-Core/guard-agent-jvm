@@ -377,17 +377,17 @@ class CoverageTest {
         }
     try {
       // 200 + evaluate clean body.
-      var pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{\"x\":1}".toByteArray(), true)
+      var pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{\"x\":1}".toByteArray())
       assertEquals(SendOutcome.ACCEPTED, pair.first, "clean 200 must accept: ${pair.second}")
       // 201 skips evaluation.
       mock.statusCodeOverrideForTest(201)
-      pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+      pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
       assertEquals(SendOutcome.ACCEPTED, pair.first, "201 must accept without evaluation")
       mock.statusCodeOverrideForTest(0)
       // Permanent rejections.
       for (code in listOf(400, 404, 422)) {
         mock.statusCodeOverrideForTest(code)
-        pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+        pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
         mock.statusCodeOverrideForTest(0)
         val permanent = pair.second as? PermanentError
         assertEquals(SendOutcome.PERMANENT, pair.first, "status $code must be permanent")
@@ -398,13 +398,13 @@ class CoverageTest {
       }
       // An unexpected 4xx is partial (and exempt from the breaker).
       mock.statusCodeOverrideForTest(409)
-      pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+      pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
       mock.statusCodeOverrideForTest(0)
       assertEquals(SendOutcome.PARTIAL, pair.first, "unexpected 4xx must be partial")
       assertTrue(pair.second != null)
       // 403 retries with backoff and then fails.
       mock.statusCodeOverrideForTest(403)
-      pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+      pair = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
       mock.statusCodeOverrideForTest(0)
       assertEquals(SendOutcome.FAILED, pair.first, "403 must retry then fail")
       assertTrue(
@@ -414,7 +414,7 @@ class CoverageTest {
       // A canceled context during the send surfaces the context error.
       val canceled = AgentContext.withCancel()
       canceled.cancel()
-      pair = tr.sendBatch(canceled, EVENTS_PATH, "{}".toByteArray(), true)
+      pair = tr.sendBatch(canceled, EVENTS_PATH, "{}".toByteArray())
       assertEquals(SendOutcome.FAILED, pair.first, "canceled sends must report the context")
       assertTrue(
           pair.second is ContextDone,
@@ -427,7 +427,7 @@ class CoverageTest {
             c.backoffFactor = 0.001
             c.endpoint = "http://127.0.0.1:1"
           }
-      pair = down.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+      pair = down.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
       assertEquals(SendOutcome.FAILED, pair.first, "unreachable endpoints must fail after retries")
       assertTrue(pair.second != null)
     } finally {
@@ -533,10 +533,10 @@ class CoverageTest {
       } finally {
         tr.jsonMarshal = savedMarshal
       }
-      // A 413 on status drops it (fire and forget), never requeues.
+      // A 413 on status is a failed push (fire and forget), never requeues.
       mock.setMaxBody(1)
       pair = tr.sendStatus(AgentContext.NONE, payload)
-      assertEquals(SendOutcome.PERMANENT, pair.first, "oversized status must drop")
+      assertEquals(SendOutcome.FAILED, pair.first, "oversized status must fail the push")
       mock.setMaxBody(262144)
     } finally {
       mock.close()
@@ -589,9 +589,13 @@ class CoverageTest {
           c.backoffFactor = 0.001
         }
     try {
-      // 200 with a malformed body surfaces a decode error.
+      // 200 with an unparseable body is a no-result retried at once.
       mock.serveRules(200, "{not json")
       var pair = tr.fetchDynamicRules(AgentContext.NONE)
+      assertTrue(pair.second is NoResultError, "${pair.second}")
+      // 200 with an object of the wrong shape surfaces a decode error.
+      mock.serveRules(200, "{\"version\":\"x\"}")
+      pair = tr.fetchDynamicRules(AgentContext.NONE)
       assertTrue(
           pair.second != null && pair.second!!.message!!.contains("malformed dynamic rules"),
           "${pair.second}",
@@ -1160,6 +1164,7 @@ class CoverageTest {
     cfg.flushInterval = Duration.ofHours(1)
     cfg.statusInterval = Duration.ofHours(1)
     cfg.backoffFactor = 0.001
+    cfg.projectId = "proj-1"
     cfg.installIdPath = tempDirFor("cov-rulesloop").resolve("install-id").toString()
     val agent = GuardAgent.create(cfg, AgentOptions().withLogger(logger))
     try {

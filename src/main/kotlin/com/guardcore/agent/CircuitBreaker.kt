@@ -15,9 +15,9 @@ internal val BREAKER_RECOVERY_TIMEOUT: Duration = Duration.ofSeconds(60)
 public enum class CircuitState(
     public val wire: String,
 ) {
-  CLOSED("closed"),
-  OPEN("open"),
-  HALF_OPEN("half_open"),
+  CLOSED("CLOSED"),
+  OPEN("OPEN"),
+  HALF_OPEN("HALF_OPEN"),
 }
 
 public class CircuitBreaker(
@@ -82,10 +82,17 @@ public class CircuitBreaker(
     }
   }
 
-  /** circuit_breaker.go `State`: "closed", "open", or "half_open". */
+  /** circuit_breaker.go `State`: "CLOSED", "OPEN", or "HALF_OPEN", the reference spelling. */
   public fun state(): String {
     synchronized(lock) {
       return state.wire
+    }
+  }
+
+  /** The consecutive failures recorded since the last success. */
+  public fun failureCount(): Int {
+    synchronized(lock) {
+      return failureCount
     }
   }
 }

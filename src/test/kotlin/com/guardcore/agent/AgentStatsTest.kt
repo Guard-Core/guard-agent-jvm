@@ -22,7 +22,7 @@ class AgentStatsTest {
       assertEquals(false, stats["running"])
       assertEquals(0.0, stats["uptime"])
       assertEquals(false, stats["cached_rules"])
-      assertEquals(null, stats["rules_last_update"])
+      assertEquals(0.0, stats["rules_last_update"])
       for (key in
           listOf(
               "events_sent",
@@ -46,6 +46,7 @@ class AgentStatsTest {
               "current_metric_buffer_size",
               "redis_persist_failures",
               "durability_degraded",
+              "auto_flush_running",
           )) {
         assertNotNull(buffer[key], "buffer_stats must carry \"$key\"")
       }
@@ -86,8 +87,8 @@ class AgentStatsTest {
           stats["cached_rules"],
           "a fetched rules snapshot must report cached_rules=true",
       )
-      val last = stats["rules_last_update"] as? String
-      assertTrue(!last.isNullOrEmpty(), "a stamped rules update must render the timestamp")
+      val last = stats["rules_last_update"] as? Double
+      assertTrue(last != null && last > 0.0, "a stamped rules update must render the epoch")
     } finally {
       agent.stop()
     }
