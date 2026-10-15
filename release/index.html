@@ -426,15 +426,15 @@ engine repo: <a href="https://github.com/Guard-Core/guard-core-jvm/blob/master/d
 This file covers what differs here.</p>
 <h2 id="versioning-law">Versioning law</h2>
 <ul>
-<li>Artifact <code>com.guard-core:guard-agent-jvm</code>; version <code>3.2.3</code>, mirroring
-  guard-agent 3.2.3 (the family versioning law, lockstep with the engines at
+<li>Artifact <code>com.guard-core:guard-agent-jvm</code>; version <code>3.2.4</code>, mirroring
+  guard-agent 3.2.4 (the family versioning law, lockstep with the engines at
   guard-core 4.3.3). The version lives in
   <code>build.gradle.kts</code>; the tag must equal it.</li>
 <li>The engine lockstep pin lives in <code>gradle/libs.versions.toml</code> (<code>guardCore =
   "4.3.3"</code>); it moves only when the engine train moves. The published POM
   carries NO guard-core dependency (compile-only): the agent artifact stays
   engine-free at runtime, exactly like the Go agent library.</li>
-<li>Tags are bare <code>vX.Y.z</code> only (<code>v3.2.3</code>). The <code>tag-consistency</code> job audits
+<li>Tags are bare <code>vX.Y.z</code> only (<code>v3.2.4</code>). The <code>tag-consistency</code> job audits
   this (the guard-core-rs invisible-rule incident on <code>refs/tags/v4.3.2</code> is
   the standing lesson).</li>
 <li>groupId <code>com.guard-core</code>; Kotlin packages stay <code>com.guardcore.*</code>.</li>
@@ -443,14 +443,14 @@ This file covers what differs here.</p>
 <p>The workflow enforces this: tagging without the flip fails <code>tag-consistency</code>
 with an explicit message.</p>
 <ul>
-<li>[ ] <code>build.gradle.kts</code>: <code>version = "3.2.3-SNAPSHOT"</code> -&gt; <code>version = "3.2.3"</code>.</li>
+<li>[ ] <code>build.gradle.kts</code>: <code>version = "3.2.4-SNAPSHOT"</code> -&gt; <code>version = "3.2.4"</code>.</li>
 <li>[ ] <code>gradle/libs.versions.toml</code>: <code>guardCore</code> still reads the lockstep engine
       version (<code>4.3.3</code>).</li>
 <li>[ ] The pinned engine ref (ci.yml clone step + settings comments) already
       points at the released engine SHA (bumped at train time, per the
       family spec).</li>
-<li>[ ] <code>CHANGELOG.md</code>: <code>## Unreleased (3.2.3-SNAPSHOT)</code> renamed to
-      <code>## [3.2.3] - YYYY-MM-DD</code> with the engine pin stated.</li>
+<li>[ ] <code>CHANGELOG.md</code>: <code>## Unreleased (3.2.4-SNAPSHOT)</code> renamed to
+      <code>## [3.2.4] - YYYY-MM-DD</code> with the engine pin stated.</li>
 <li>[ ] CI green on the release PR; merge it; tag the merge commit.</li>
 </ul>
 <h2 id="release-choreography">Release choreography</h2>
@@ -466,10 +466,10 @@ Central).</p>
    deployments released, repo1 answering 200 for both engine artifacts
    (engine docs/release.md, steps 1 and 5).</li>
 <li>Merge the version-flip PR.</li>
-<li>Tag: <code>git tag v3.2.3 &amp;&amp; git push origin v3.2.3</code>. Gates run in order:
+<li>Tag: <code>git tag v3.2.4 &amp;&amp; git push origin v3.2.4</code>. Gates run in order:
    pre-flight (engine live) -&gt; tests at tag (composite ON, same as ci.yml) -&gt;
    tag-consistency (bare tag equals the in-file version).</li>
-<li>Create the GitHub release for <code>v3.2.3</code>. The publish job:</li>
+<li>Create the GitHub release for <code>v3.2.4</code>. The publish job:</li>
 <li>verifies the four secrets are set (Portal user token + GPG key);</li>
 <li>checks repo1 for this exact artifact and skips if already live
      (changed-only rerun safety);</li>
@@ -479,11 +479,11 @@ Central).</p>
 <li>Release the deployment in the Portal UI (central.sonatype.com, Publishing
    -&gt; Deployments).</li>
 <li>Verify liveness:
-   <code>curl -f https://repo1.maven.org/maven2/com/guard-core/guard-agent-jvm/3.2.3/guard-agent-jvm-3.2.3.pom</code></li>
+   <code>curl -f https://repo1.maven.org/maven2/com/guard-core/guard-agent-jvm/3.2.4/guard-agent-jvm-3.2.4.pom</code></li>
 </ol>
 <h2 id="post-release-audits-per-train">Post-release audits (per train)</h2>
 <ol>
-<li>Release page for <code>v3.2.3</code> exists with the expected notes (per-tag audit;
+<li>Release page for <code>v3.2.4</code> exists with the expected notes (per-tag audit;
    the php v4.3.1 lesson).</li>
 <li>repo1 answers 200 for the artifact (the same check the workflow uses).</li>
 <li>No deployment left VALIDATED/PENDING in the Portal.</li>
