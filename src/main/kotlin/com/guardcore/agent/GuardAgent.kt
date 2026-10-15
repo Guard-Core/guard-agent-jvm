@@ -73,6 +73,12 @@ internal constructor(
   /** confirmQueue serializes Redis confirmations on one worker thread. */
   internal val confirmQueue = LinkedBlockingQueue<List<String>>(64)
 
+  /**
+   * Redis persists run here, never on the caller's thread and never under [mutex]; [stop] waits for
+   * them. Null when persistence is not configured, so nothing is started then.
+   */
+  internal var persistPool: java.util.concurrent.ThreadPoolExecutor? = null
+
   @Volatile private var confirmClosed: Boolean = false
   private val workerDone = CountDownLatch(1)
   private val loopThreads = mutableListOf<Thread>()
@@ -84,12 +90,14 @@ internal constructor(
   /** agent.go `bufferedEvent`: one queued event plus its persistence key. */
   internal class BufferedEvent(
       val ev: SecurityEvent,
-      val key: String,
+      @Volatile var key: String,
+      val reserved: String = "",
   )
 
   internal class BufferedMetric(
       val m: SecurityMetric,
-      val key: String,
+      @Volatile var key: String,
+      val reserved: String = "",
   )
 
   /** agent.go `Status`: a point-in-time snapshot of the agent's health and counters. */
@@ -154,6 +162,9 @@ internal constructor(
     internal const val DEGRADED_FAILURE_RATE: Double = 0.1
     internal const val HEALTH_FAILURE_RATE_MAX: Double = 0.5
     internal const val MAX_TRACKED_ERRORS: Int = 10
+    internal const val PERSIST_THREADS: Int = 4
+    internal const val PERSIST_QUEUE: Int = 1024
+    internal const val PERSIST_DRAIN_MS: Long = 10_000
     internal const val KIND_EVENT: String = "event"
     internal const val KIND_METRIC: String = "metric"
     internal const val ENGINE_CLASS_NAME: String = "com.guardcore.engine.GuardCoreEngine"
@@ -188,7 +199,9 @@ internal constructor(
             createEncryptor(cfg.projectEncryptionKey)
           } catch (encErr: Exception) {
             throw EncryptionConfigError(
-                "Encryption round-trip failed at startup; refusing plaintext fallback",
+                "Encryption round-trip failed at startup; refusing plaintext fallback " +
+                    "(cause: ${encErr.message ?: encErr::class.java.simpleName})",
+                encErr,
             )
           }
       if (encryptor != null && !encryptor.verifyKey()) {
@@ -212,6 +225,16 @@ internal constructor(
               )
             }
         agent.persist = persist
+        agent.persistPool =
+            java.util.concurrent.ThreadPoolExecutor(
+                PERSIST_THREADS,
+                PERSIST_THREADS,
+                0L,
+                TimeUnit.MILLISECONDS,
+                LinkedBlockingQueue(PERSIST_QUEUE),
+            ) { r ->
+              Thread(r, "guard-agent-persist").apply { isDaemon = true }
+            }
         val worker = Thread({ agent.confirmWorker() }, "guard-agent-confirm")
         worker.isDaemon = true
         worker.start()
@@ -267,6 +290,10 @@ internal constructor(
         val threads = synchronized(mutex) { loopThreads.toList() }
         for (t in threads) {
           t.join(10_000)
+        }
+        persistPool?.let {
+          it.shutdown()
+          it.awaitTermination(PERSIST_DRAIN_MS, TimeUnit.MILLISECONDS)
         }
         val errE = flushEvents(ctx, force = true)
         val errM = flushMetrics(ctx, force = true)
@@ -718,9 +745,11 @@ internal constructor(
       var evicted: BufferedEvent? = null
       var droppedCount = 0L
       var needFlush = false
+      var item: BufferedEvent? = null
       synchronized(mutex) {
         if (events.size < cfg.bufferSize) {
-          needFlush = appendEventLocked(ev)
+          item = appendEventLocked(ev)
+          needFlush = watermarkReachedLocked()
           action = 1
         } else {
           when (cfg.overflow) {
@@ -729,7 +758,8 @@ internal constructor(
               val old = events.removeFirst()
               eventsDropped++
               droppedCount = eventsDropped
-              needFlush = appendEventLocked(ev)
+              item = appendEventLocked(ev)
+              needFlush = watermarkReachedLocked()
               evicted = old
               action = 2
             }
@@ -740,12 +770,14 @@ internal constructor(
       }
       when (action) {
         1 -> {
+          spawnPersistEvent(item!!)
           if (needFlush) {
             triggerFlush()
           }
           return
         }
         2 -> {
+          spawnPersistEvent(item!!)
           logDrop(KIND_EVENT, droppedCount)
           evicted?.key?.takeIf { it.isNotEmpty() }?.let { confirmKeys(listOf(it)) }
           if (needFlush) {
@@ -767,9 +799,11 @@ internal constructor(
       var evicted: BufferedMetric? = null
       var droppedCount = 0L
       var needFlush = false
+      var item: BufferedMetric? = null
       synchronized(mutex) {
         if (metrics.size < cfg.bufferSize) {
-          needFlush = appendMetricLocked(m)
+          item = appendMetricLocked(m)
+          needFlush = watermarkReachedLocked()
           action = 1
         } else {
           when (cfg.overflow) {
@@ -778,7 +812,8 @@ internal constructor(
               val old = metrics.removeFirst()
               metricsDropped++
               droppedCount = metricsDropped
-              needFlush = appendMetricLocked(m)
+              item = appendMetricLocked(m)
+              needFlush = watermarkReachedLocked()
               evicted = old
               action = 2
             }
@@ -789,12 +824,14 @@ internal constructor(
       }
       when (action) {
         1 -> {
+          spawnPersistMetric(item!!)
           if (needFlush) {
             triggerFlush()
           }
           return
         }
         2 -> {
+          spawnPersistMetric(item!!)
           logDrop(KIND_METRIC, droppedCount)
           evicted?.key?.takeIf { it.isNotEmpty() }?.let { confirmKeys(listOf(it)) }
           if (needFlush) {
@@ -827,63 +864,115 @@ internal constructor(
   }
 
   /**
-   * agent.go `appendEventLocked`: appends under a held lock, persisting to Redis first
-   * (persist-on-enqueue, mirroring the Python agent which awaits the write while holding the buffer
-   * lock). It returns whether the combined occupancy reached the high-watermark.
+   * agent.go `appendEventLocked`: appends under a held lock. Redis is never touched here: the
+   * caller hands the returned item to [spawnPersistEvent] after releasing the lock.
    */
-  private fun appendEventLocked(ev: SecurityEvent): Boolean {
-    val key = reserveEventKeyLocked(ev)
-    events.add(BufferedEvent(ev, key))
+  private fun appendEventLocked(ev: SecurityEvent): BufferedEvent {
+    // The key is minted here, under the lock, so key order equals append order (reload sorts keys).
+    val item = BufferedEvent(ev, "", mintKey(PERSIST_NAMESPACE_EVENTS, "event"))
+    events.add(item)
     eventsBuffered++
-    return watermarkReachedLocked()
+    return item
   }
 
-  private fun appendMetricLocked(m: SecurityMetric): Boolean {
-    val key = reserveMetricKeyLocked(m)
-    metrics.add(BufferedMetric(m, key))
+  private fun appendMetricLocked(m: SecurityMetric): BufferedMetric {
+    val item = BufferedMetric(m, "", mintKey(PERSIST_NAMESPACE_METRICS, "metric"))
+    metrics.add(item)
     metricsBuffered++
-    return watermarkReachedLocked()
+    return item
   }
+
+  private fun mintKey(
+      namespace: String,
+      kind: String,
+  ): String = persist?.let { it.fullKey(namespace, it.shortKey(kind)) } ?: ""
 
   private fun watermarkReachedLocked(): Boolean {
     val combined = events.size + metrics.size
     return combined.toDouble() >= cfg.bufferSize.toDouble() * cfg.highWatermarkRatio
   }
 
-  internal fun reserveEventKeyLocked(ev: SecurityEvent): String {
-    val p = persist ?: return ""
+  /** Runs [task] on the persist pool; a full or closed pool skips persistence (fail-open). */
+  private fun submitPersist(task: () -> Unit) {
+    val pool = persistPool ?: return
+    try {
+      pool.execute {
+        try {
+          task()
+        } catch (e: Throwable) {
+          logger.warning("guardagent: redis persist task failed: $e")
+        }
+      }
+    } catch (e: java.util.concurrent.RejectedExecutionException) {
+      synchronized(mutex) { redisPersistFailures++ }
+    }
+  }
+
+  private fun spawnPersistEvent(item: BufferedEvent) = submitPersist { persistEventNow(item) }
+
+  private fun spawnPersistMetric(item: BufferedMetric) = submitPersist { persistMetricNow(item) }
+
+  /** Persists one buffered event and settles its key. Never called with [mutex] held. */
+  internal fun persistEventNow(item: BufferedEvent) {
     val data =
         try {
-          goJson(ev)
+          goJson(item.ev)
         } catch (err: Exception) {
-          redisPersistFailures++
-          recordErrorLocked("event serialization for persistence failed: ${err.message}")
-          return ""
+          synchronized(mutex) {
+            redisPersistFailures++
+            recordErrorLocked("event serialization for persistence failed: ${err.message}")
+          }
+          return
         }
-    return persistItemLocked(PERSIST_NAMESPACE_EVENTS, "event", data)
+    val key =
+        persistItem(item.reserved.ifEmpty { mintKey(PERSIST_NAMESPACE_EVENTS, "event") }, data)
+    if (key.isEmpty()) {
+      return
+    }
+    // Still buffered (including after a requeue): track the key. Flushed or evicted before
+    // the key came back: delete it so it neither orphans nor replays after a restart.
+    val tracked =
+        synchronized(mutex) {
+          val buffered = events.asReversed().any { it === item }
+          if (buffered) item.key = key
+          buffered
+        }
+    if (!tracked) {
+      confirmKeys(listOf(key))
+    }
   }
 
-  internal fun reserveMetricKeyLocked(m: SecurityMetric): String {
-    val p = persist ?: return ""
-    // SecurityMetric is JSON-serializable by construction (scalar and
-    // string-map fields only), so unlike events its serialization cannot
-    // fail; only the persistence write can.
-    val data = goJson(m)
-    return persistItemLocked(PERSIST_NAMESPACE_METRICS, "metric", data)
+  /** Metric twin of [persistEventNow]. */
+  internal fun persistMetricNow(item: BufferedMetric) {
+    val key =
+        persistItem(
+            item.reserved.ifEmpty { mintKey(PERSIST_NAMESPACE_METRICS, "metric") },
+            goJson(item.m),
+        )
+    if (key.isEmpty()) {
+      return
+    }
+    val tracked =
+        synchronized(mutex) {
+          val buffered = metrics.asReversed().any { it === item }
+          if (buffered) item.key = key
+          buffered
+        }
+    if (!tracked) {
+      confirmKeys(listOf(key))
+    }
   }
 
-  private fun persistItemLocked(
-      namespace: String,
-      kind: String,
+  /** Writes one record to Redis. Must be called WITHOUT [mutex] held. */
+  private fun persistItem(
+      key: String,
       data: ByteArray,
   ): String {
     val p = persist!!
-    val short = p.shortKey(kind)
-    val key = p.fullKey(namespace, short)
     if (p.store(key, data.toString(Charsets.UTF_8))) {
       return key
     }
-    redisPersistFailures++
+    synchronized(mutex) { redisPersistFailures++ }
     return ""
   }
 

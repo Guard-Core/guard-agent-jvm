@@ -108,3 +108,11 @@ class AgentTestPanicDoer : HttpDoer {
       ctx: AgentContext,
   ): HttpResponse<ByteArray> = throw IllegalStateException("transport panic")
 }
+
+/** Blocks until every queued Redis persist has completed (persistence is asynchronous). */
+fun GuardAgent.awaitPersists() {
+  val pool = persistPool ?: return
+  waitUntil(Duration.ofSeconds(15), "pending persists drained") {
+    pool.taskCount == pool.completedTaskCount
+  }
+}

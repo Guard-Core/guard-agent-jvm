@@ -29,7 +29,8 @@ public class EncryptionError(
  */
 public class EncryptionConfigError(
     message: String,
-) : RuntimeException(message)
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
 
 /** encryption.go `PayloadEncryptor`: encrypts telemetry payloads with AES-256-GCM. */
 public class PayloadEncryptor

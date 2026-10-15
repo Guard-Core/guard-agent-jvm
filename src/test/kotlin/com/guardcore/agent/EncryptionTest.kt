@@ -147,8 +147,10 @@ class EncryptionTest {
     cfg.apiKey = "test-api-key-123"
     cfg.projectEncryptionKey = "not-a-valid-key"
     val err = assertFailsWith<EncryptionConfigError> { GuardAgent.create(cfg) }
-    assertEquals(
-        "Encryption round-trip failed at startup; refusing plaintext fallback",
+    assertTrue(
+        err.message!!.startsWith(
+            "Encryption round-trip failed at startup; refusing plaintext fallback",
+        ),
         err.message,
     )
   }
