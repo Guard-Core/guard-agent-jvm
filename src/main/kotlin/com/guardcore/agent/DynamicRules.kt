@@ -209,11 +209,16 @@ internal fun writeDynamicRulesJson(
   sb.append('}')
 }
 
+/** The statuses the reference raises as PermanentClientError or PayloadTooLargeError. */
+internal fun isPermanentStatus(code: Int): Boolean =
+    code == 400 || code == 404 || code == 413 || code == 422
+
 /**
  * dynamic_rules.go `fetchDynamicRules`: GETs the rules document with the same retry machinery as
  * batch sends: local rate limiter admission, circuit breaker, capped Retry-After on 429,
- * exponential backoff on every other failure. A null rules value with a null error never happens;
- * on give-up the error is returned and the caller falls back to its cache.
+ * exponential backoff on every other failure. A null rules value with a null error means an empty
+ * rules object (reference: None); on give-up the error is returned and the caller falls back to its
+ * cache.
  */
 internal fun Transport.fetchDynamicRules(ctx: AgentContext): Pair<DynamicRules?, Throwable?> {
   var attempt = 0
@@ -232,7 +237,6 @@ internal fun Transport.fetchDynamicRules(ctx: AgentContext): Pair<DynamicRules?,
     }
     // A pre-canceled context fails the fetch like Go's client.Do(ctx).
     if (ctx.isDone()) {
-      requestsFailed.incrementAndGet()
       return null to ctx.err()
     }
     val request: HttpRequest
@@ -256,15 +260,14 @@ internal fun Transport.fetchDynamicRules(ctx: AgentContext): Pair<DynamicRules?,
     try {
       response = client.execute(request, ByteArray(0), ctx)
     } catch (err: ContextDone) {
-      breaker.failure()
-      requestsFailed.incrementAndGet()
+      // A cancelled context never counts against the breaker.
       return null to err
     } catch (err: java.io.IOException) {
-      breaker.failure()
-      requestsFailed.incrementAndGet()
       if (ctx.isDone()) {
         return null to ctx.err()
       }
+      breaker.failure()
+      requestsFailed.incrementAndGet()
       if (
           attempt < cfg.retryAttempts && sleepContext(ctx, retryBackoff(attempt, cfg.backoffFactor))
       ) {
@@ -279,7 +282,27 @@ internal fun Transport.fetchDynamicRules(ctx: AgentContext): Pair<DynamicRules?,
     when {
       response.statusCode() == 200 -> {
         breaker.success()
+        val parsedBody =
+            try {
+              parseJson(body, useNumber = false)
+            } catch (err: Exception) {
+              null
+            }
+        if (parsedBody !is Map<*, *>) {
+          // An unparseable or non-object 200 is a no-result: retried at once (the reference
+          // counts it failed and loops).
+          requestsFailed.incrementAndGet()
+          if (attempt < cfg.retryAttempts) {
+            attempt++
+            continue
+          }
+          return null to NoResultError("guardagent: dynamic rules response was not a JSON object")
+        }
         requestsSent.incrementAndGet()
+        if (parsedBody.isEmpty()) {
+          // fetch_dynamic_rules returns None for an empty object.
+          return null to null
+        }
         val rules =
             try {
               DynamicRules.fromJson(body)
@@ -303,8 +326,15 @@ internal fun Transport.fetchDynamicRules(ctx: AgentContext): Pair<DynamicRules?,
         }
         return null to RateLimitedError(delay)
       }
-      else -> {
-        breaker.failure()
+      isPermanentStatus(response.statusCode()) ||
+          response.statusCode() == 401 ||
+          response.statusCode() == 403 ||
+          response.statusCode() >= 500 -> {
+        // 400/404/413/422 are definitive verdicts (PermanentClientError in the reference): retried
+        // with backoff but never counted against the breaker. 401/403/5xx count.
+        if (!isPermanentStatus(response.statusCode())) {
+          breaker.failure()
+        }
         requestsFailed.incrementAndGet()
         if (
             attempt < cfg.retryAttempts &&
@@ -320,6 +350,20 @@ internal fun Transport.fetchDynamicRules(ctx: AgentContext): Pair<DynamicRules?,
                     ": " +
                     truncate(body.toString(Charsets.UTF_8), 200),
                 ErrorKind.INTERNAL,
+            )
+      }
+      else -> {
+        // Any other status (201, 202, 204, 3xx, 405, 408, ...) is a transient no-result: retried
+        // at once, breaker untouched.
+        breaker.success()
+        requestsFailed.incrementAndGet()
+        if (attempt < cfg.retryAttempts) {
+          attempt++
+          continue
+        }
+        return null to
+            NoResultError(
+                "guardagent: dynamic rules request returned status ${response.statusCode()}",
             )
       }
     }

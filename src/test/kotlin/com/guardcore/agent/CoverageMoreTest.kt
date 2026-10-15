@@ -114,7 +114,7 @@ class CoverageMoreTest {
       val limiter = RateLimiter(1, Duration.ofMillis(20))
       tr.limiter = limiter
       limiter.seedCallsForTest(listOf(Instant.now()))
-      val (outcome, err) = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+      val (outcome, err) = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
       assertEquals(
           SendOutcome.ACCEPTED,
           outcome,
@@ -164,7 +164,7 @@ class CoverageMoreTest {
       // fit, and the first half fails so the aggregate reports failure.
       val pad = "x".repeat(40)
       val events = (0..3).map { testEvent(it, pad) }
-      mock.setMaxBody(320)
+      mock.setMaxBody(800)
       mock.failNext(2)
       val outcome = tr.splitOrDropEvents(AgentContext.NONE, events)
       assertEquals(SendOutcome.FAILED, outcome, "a failed split half must fail the aggregate")
@@ -179,7 +179,7 @@ class CoverageMoreTest {
   fun sendBatchNewRequestFailure() {
     val tr = transport(null)
     tr.cfg.endpoint = "://bad endpoint"
-    val (outcome, err) = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+    val (outcome, err) = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
     assertEquals(SendOutcome.FAILED, outcome, "an unparseable endpoint must fail the request build")
     assertTrue(err != null, "an unparseable endpoint must fail the request build")
   }
@@ -194,7 +194,7 @@ class CoverageMoreTest {
         }
     try {
       mock.rateLimitNext(1, "0.05")
-      val (outcome, err) = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray(), true)
+      val (outcome, err) = tr.sendBatch(AgentContext.NONE, EVENTS_PATH, "{}".toByteArray())
       assertEquals(
           SendOutcome.ACCEPTED,
           outcome,
@@ -346,11 +346,13 @@ class CoverageMoreTest {
     agent.persist = deadPersist
     val poisoned =
         SecurityEvent(null, "e", metadata = linkedMapOf<String, Any?>("chan" to Thread()))
-    agent.persistEventNow(GuardAgent.BufferedEvent(poisoned, ""))
+    val poisonedItem = GuardAgent.BufferedEvent(poisoned, "")
+    synchronized(agent.mutex) { agent.events.add(poisonedItem) }
+    agent.persistEventNow(poisonedItem)
     assertEquals(1L, agent.stats().redisPersistFailures, "serialization failures must count")
-    agent.persistMetricNow(
-        GuardAgent.BufferedMetric(SecurityMetric(null, MetricTypes.REQUEST_COUNT), ""),
-    )
+    val metricItem = GuardAgent.BufferedMetric(SecurityMetric(null, MetricTypes.REQUEST_COUNT), "")
+    synchronized(agent.mutex) { agent.metrics.add(metricItem) }
+    agent.persistMetricNow(metricItem)
     assertEquals(2L, agent.stats().redisPersistFailures, "store failures must count")
     deadPersist.close()
   }

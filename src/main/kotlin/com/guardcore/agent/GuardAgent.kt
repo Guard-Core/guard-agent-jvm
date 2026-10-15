@@ -12,7 +12,7 @@ import java.util.logging.Logger
  * Port of guard-agent-go `agent.go`. GuardAgent buffers security telemetry and ships it to the
  * Guard Core App ingestion API with at-least-once semantics. Construct with [GuardAgent.create];
  * call [start] to begin the background flush and status loops (buffering works before start); call
- * [stop] to cancel the loops and attempt one final forced flush.
+ * [stop] to cancel the loops and attempt one final flush (under the per-kind backoff gates).
  *
  * Failure isolation policy: no exported method ever throws an unexpected exception; telemetry
  * failures are logged and counted and, where idiomatic, thrown as errors that callers may freely
@@ -56,6 +56,18 @@ internal constructor(
   internal var rulesFetched: Long = 0
   internal var cachedRules: DynamicRules? = null
   internal var rulesLastUpdate: Instant = Instant.EPOCH
+
+  /** Consecutive crashed flush iterations (a send failure is not a crash in the reference). */
+  internal var flushLoopFailures: Int = 0
+
+  /** Null until the first status push. */
+  internal var lastStatusPushOk: Boolean? = null
+
+  /** Redis writes submitted but not finished (guarded by [mutex]); capped at bufferSize. */
+  internal var persistInflight: Int = 0
+
+  /** Limits the backlog warning to one per episode; resets when [persistInflight] empties. */
+  internal var persistOverflowLogged: Boolean = false
 
   @Volatile internal var started: Boolean = false
   @Volatile internal var closed: Boolean = false
@@ -121,7 +133,7 @@ internal constructor(
     /** The most recent failure messages, oldest first. */
     public var errors: List<String> = emptyList()
 
-    /** "closed", "open", or "half_open". */
+    /** "CLOSED", "OPEN", or "HALF_OPEN". */
     public var circuitState: String = ""
   }
 
@@ -162,8 +174,6 @@ internal constructor(
     internal const val DEGRADED_FAILURE_RATE: Double = 0.1
     internal const val HEALTH_FAILURE_RATE_MAX: Double = 0.5
     internal const val MAX_TRACKED_ERRORS: Int = 10
-    internal const val PERSIST_THREADS: Int = 4
-    internal const val PERSIST_QUEUE: Int = 1024
     internal const val PERSIST_DRAIN_MS: Long = 10_000
     internal const val KIND_EVENT: String = "event"
     internal const val KIND_METRIC: String = "metric"
@@ -225,13 +235,15 @@ internal constructor(
               )
             }
         agent.persist = persist
+        // One thread per concurrent write, like Go's goroutine per write; the number in flight is
+        // capped at bufferSize by submitPersist, so the pool is bounded by configuration.
         agent.persistPool =
             java.util.concurrent.ThreadPoolExecutor(
-                PERSIST_THREADS,
-                PERSIST_THREADS,
-                0L,
-                TimeUnit.MILLISECONDS,
-                LinkedBlockingQueue(PERSIST_QUEUE),
+                0,
+                Int.MAX_VALUE,
+                30L,
+                TimeUnit.SECONDS,
+                java.util.concurrent.SynchronousQueue(),
             ) { r ->
               Thread(r, "guard-agent-persist").apply { isDaemon = true }
             }
@@ -269,14 +281,17 @@ internal constructor(
           spawnLoop("guard-agent-autoflush") { autoFlushLoop() }
           repeat(flushers) { i -> spawnLoop("guard-agent-wakeflush-$i") { wakeFlushLoop() } }
           spawnLoop("guard-agent-status") { statusLoop() }
-          spawnLoop("guard-agent-rules") { rulesLoop() }
+          // The rules loop needs a project id (client.py:128-129).
+          if (cfg.projectId.isNotEmpty()) {
+            spawnLoop("guard-agent-rules") { rulesLoop() }
+          }
         }
       }
 
   /**
-   * agent.go `Stop`: cancels the background loops, attempts one final forced flush of both kinds
-   * (bypassing the per-kind backoff gates), and releases resources. It is idempotent and returns
-   * the final flush error, if any.
+   * agent.go `Stop`: cancels the background loops, attempts one final flush of both kinds (under
+   * the per-kind backoff gates, like the reference), and releases resources. It is idempotent and
+   * returns the final flush error, if any.
    */
   public fun stop(ctx: AgentContext = AgentContext.NONE): Throwable? =
       isolated("Stop") {
@@ -295,8 +310,8 @@ internal constructor(
           it.shutdown()
           it.awaitTermination(PERSIST_DRAIN_MS, TimeUnit.MILLISECONDS)
         }
-        val errE = flushEvents(ctx, force = true)
-        val errM = flushMetrics(ctx, force = true)
+        val errE = flushEvents(ctx)
+        val errM = flushMetrics(ctx)
         val err = joinErrors(errE, errM)
         if (persist != null) {
           confirmClosed = true
@@ -381,8 +396,8 @@ internal constructor(
   public fun flush(ctx: AgentContext = AgentContext.NONE): Throwable? =
       isolated("Flush") {
         guardClosed()
-        val errE = flushEvents(ctx, force = false)
-        val errM = flushMetrics(ctx, force = false)
+        val errE = flushEvents(ctx)
+        val errM = flushMetrics(ctx)
         joinErrors(errE, errM)
       }
 
@@ -428,8 +443,10 @@ internal constructor(
           if ((events.size + metrics.size) >= cfg.bufferSize * HEALTH_BUFFER_RATIO) {
             return@isolated false
           }
-          val total = eventsSent + eventsFailed
-          if (total > 0 && eventsFailed.toDouble() / total.toDouble() > HEALTH_FAILURE_RATE_MAX) {
+          // Events plus metrics, like the reference (_client_status.py:104-111).
+          val failed = eventsFailed + metricsFailed
+          val total = eventsSent + metricsSent + failed
+          if (total > 0 && failed.toDouble() / total.toDouble() > HEALTH_FAILURE_RATE_MAX) {
             return@isolated false
           }
           true
@@ -467,24 +484,32 @@ internal constructor(
 
   /**
    * agent.go `AgentStats`: renders the reference get_stats dict shape (guard_agent
-   * _client_status.py get_stats) for the engine's middleware agent_stats merge. Every key carries
-   * the same value as the typed snapshots; the reference's per-loop consecutive-failure counters
-   * (loop_failures) and last_status_push_ok have no tracked counterpart in this port and are
-   * omitted.
+   * _client_status.py get_stats) for the engine's middleware agent_stats merge. Every key of the
+   * reference is present: timestamps are float epoch seconds (rules_last_update is 0.0 before the
+   * first fetch, last_flush_time is null before the first flush) and the breaker state is "CLOSED",
+   * "OPEN" or "HALF_OPEN".
    */
   public fun agentStats(): Map<String, Any?> {
     val stats = stats()
     var running = false
     var uptime = 0.0
     var cachedRulesFlag = false
-    var rulesStamp: String? = null
+    var rulesStamp = 0.0
+    var lastFlushTime: Double? = null
+    var flushFailures = 0
+    var statusFailures = 0
+    var statusPushOk: Boolean? = null
     synchronized(mutex) {
       running = started && !closed
       if (running) {
         uptime = Duration.between(startedAt, Instant.now()).toMillis() / 1000.0
       }
       cachedRulesFlag = cachedRules != null
-      rulesStamp = if (rulesLastUpdate != Instant.EPOCH) rfc3339Nano(rulesLastUpdate) else null
+      rulesStamp = if (rulesLastUpdate != Instant.EPOCH) epochSeconds(rulesLastUpdate) else 0.0
+      lastFlushTime = if (lastFlush != Instant.EPOCH) epochSeconds(lastFlush) else null
+      flushFailures = flushLoopFailures
+      statusFailures = statusStreak
+      statusPushOk = lastStatusPushOk
     }
     return linkedMapOf(
         "running" to running,
@@ -506,17 +531,34 @@ internal constructor(
                 "current_metric_buffer_size" to stats.metricsPending,
                 "redis_persist_failures" to stats.redisPersistFailures,
                 "durability_degraded" to stats.durabilityDegraded,
+                "last_flush_time" to lastFlushTime,
+                "auto_flush_running" to running,
             ),
         "transport_stats" to
             linkedMapOf<String, Any?>(
                 "requests_sent" to stats.requestsSent,
                 "requests_failed" to stats.requestsFailed,
+                "bytes_sent" to tr.bytesSent.get(),
                 "circuit_breaker_state" to stats.circuitState,
+                "failure_count" to tr.breaker.failureCount(),
+                "session_closed" to !running,
             ),
         "cached_rules" to cachedRulesFlag,
         "rules_last_update" to rulesStamp,
+        // The reference's rules loop never counts a fetch failure (get_dynamic_rules swallows
+        // them), so its counter stays 0.
+        "loop_failures" to
+            linkedMapOf<String, Any?>(
+                "flush" to flushFailures,
+                "status" to statusFailures,
+                "rules" to 0,
+            ),
+        "last_status_push_ok" to statusPushOk,
     )
   }
+
+  /** The reference's time.time(): float epoch seconds. */
+  private fun epochSeconds(t: Instant): Double = t.epochSecond + t.nano / 1_000_000_000.0
 
   // ---------------------------------------------------------- dynamic rules --
 
@@ -623,6 +665,13 @@ internal constructor(
    */
   internal fun flushTick(consecutiveIn: Int): Int {
     val err = flush(loopContext)
+    synchronized(mutex) {
+      if (err.isRecoveredPanic()) {
+        flushLoopFailures++
+      } else {
+        flushLoopFailures = 0
+      }
+    }
     var consecutive = consecutiveIn
     if (err != null) {
       consecutive++
@@ -892,19 +941,51 @@ internal constructor(
     return combined.toDouble() >= cfg.bufferSize.toDouble() * cfg.highWatermarkRatio
   }
 
-  /** Runs [task] on the persist pool; a full or closed pool skips persistence (fail-open). */
+  /**
+   * Runs [task] on the persist pool. The writes in flight are capped at bufferSize (shared by
+   * events and metrics, like the reference's _spawn_persist): past the cap the record stays in
+   * memory only, counts as a persist failure, and one warning is logged per backlog episode. A
+   * closed pool also skips persistence (fail-open).
+   */
   private fun submitPersist(task: () -> Unit) {
     val pool = persistPool ?: return
+    synchronized(mutex) {
+      if (persistInflight >= cfg.bufferSize) {
+        redisPersistFailures++
+        if (!persistOverflowLogged) {
+          persistOverflowLogged = true
+          logger.warning(
+              "guardagent: Redis persist backlog at buffer_size=${cfg.bufferSize}; " +
+                  "buffering in memory only until it drains",
+          )
+        }
+        return
+      }
+      persistInflight++
+    }
     try {
       pool.execute {
         try {
           task()
         } catch (e: Throwable) {
           logger.warning("guardagent: redis persist task failed: $e")
+        } finally {
+          finishPersist()
         }
       }
     } catch (e: java.util.concurrent.RejectedExecutionException) {
+      finishPersist()
       synchronized(mutex) { redisPersistFailures++ }
+    }
+  }
+
+  /** Drops one write from the backlog; an empty backlog ends the overflow episode. */
+  private fun finishPersist() {
+    synchronized(mutex) {
+      persistInflight--
+      if (persistInflight == 0) {
+        persistOverflowLogged = false
+      }
     }
   }
 
@@ -914,6 +995,11 @@ internal constructor(
 
   /** Persists one buffered event and settles its key. Never called with [mutex] held. */
   internal fun persistEventNow(item: BufferedEvent) {
+    // An event that already left the buffer (flushed or evicted) before its write starts is never
+    // written, like the reference (_buffer_redis.py:93-98).
+    if (synchronized(mutex) { events.asReversed().none { it === item } }) {
+      return
+    }
     val data =
         try {
           goJson(item.ev)
@@ -944,6 +1030,9 @@ internal constructor(
 
   /** Metric twin of [persistEventNow]. */
   internal fun persistMetricNow(item: BufferedMetric) {
+    if (synchronized(mutex) { metrics.asReversed().none { it === item } }) {
+      return
+    }
     val key =
         persistItem(
             item.reserved.ifEmpty { mintKey(PERSIST_NAMESPACE_METRICS, "metric") },
@@ -1021,17 +1110,14 @@ internal constructor(
     }
   }
 
-  internal fun flushEvents(
-      ctx: AgentContext,
-      force: Boolean,
-  ): Throwable? {
+  internal fun flushEvents(ctx: AgentContext): Throwable? {
     if (!cfg.enableEvents) {
       return null
     }
     val drained = ArrayList<BufferedEvent>()
     val keys = ArrayList<String>()
     synchronized(mutex) {
-      if (!force && gateClosedLocked(eventGate)) {
+      if (gateClosedLocked(eventGate)) {
         return null
       }
       if (events.isEmpty()) {
@@ -1069,17 +1155,14 @@ internal constructor(
             GuardAgentException("${Err.INTERNAL} during event send: $panic", ErrorKind.INTERNAL)
       }
 
-  internal fun flushMetrics(
-      ctx: AgentContext,
-      force: Boolean,
-  ): Throwable? {
+  internal fun flushMetrics(ctx: AgentContext): Throwable? {
     if (!cfg.enableMetrics) {
       return null
     }
     val drained = ArrayList<BufferedMetric>()
     val keys = ArrayList<String>()
     synchronized(mutex) {
-      if (!force && gateClosedLocked(metricGate)) {
+      if (gateClosedLocked(metricGate)) {
         return null
       }
       if (metrics.isEmpty()) {
@@ -1343,9 +1426,9 @@ internal constructor(
               GuardAgentException("${Err.INTERNAL} during status send: $panic", ErrorKind.INTERNAL)
         }
     synchronized(mutex) {
+      lastStatusPushOk = outcome == SendOutcome.ACCEPTED
       when (outcome) {
-        SendOutcome.ACCEPTED,
-        SendOutcome.PERMANENT -> {
+        SendOutcome.ACCEPTED -> {
           statusSent++
           statusStreak = 0
         }
@@ -1396,8 +1479,10 @@ internal constructor(
     ) {
       return AgentStatusValues.DEGRADED
     }
-    val total = eventsSent + eventsFailed
-    if (total > 0 && eventsFailed.toDouble() / total.toDouble() > DEGRADED_FAILURE_RATE) {
+    // Events plus metrics, like the reference (_client_status.py:47-57).
+    val failed = eventsFailed + metricsFailed
+    val total = eventsSent + metricsSent + failed
+    if (total > 0 && failed.toDouble() / total.toDouble() > DEGRADED_FAILURE_RATE) {
       return AgentStatusValues.DEGRADED
     }
     return AgentStatusValues.HEALTHY
@@ -1540,6 +1625,14 @@ internal constructor(
       } catch (panic: Throwable) {
         logger.warning("guardagent: recovered from panic in $method: $panic")
         throw GuardAgentException("${Err.INTERNAL} in $method: $panic", ErrorKind.INTERNAL)
+      }
+
+  /** The errors.Is(err, ErrInternal) analog: an error recovered from a panic, not a 5xx. */
+  private fun Throwable?.isRecoveredPanic(): Boolean =
+      when (this) {
+        null -> false
+        is JoinedErrors -> errors.any { it.isRecoveredPanic() }
+        else -> this is GuardAgentException && message?.startsWith(Err.INTERNAL) == true
       }
 
   private fun joinErrors(

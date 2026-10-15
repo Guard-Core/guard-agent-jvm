@@ -271,6 +271,8 @@ class PersistenceIntegrationTest {
         }
     try {
       agent.sendMetric(testMetric(1))
+      // The persist backlog is capped at bufferSize (1): let the first write land.
+      agent.awaitPersists()
       // The buffer holds one metric; the second evicts the first, whose
       // persisted record must be confirmed (deleted).
       agent.sendMetric(testMetric(2))
@@ -528,10 +530,9 @@ class PersistenceIntegrationTest {
       for (i in 1..2) first.sendEvent(testEvent(i))
       first.awaitPersists()
       assertTrue(first.flush() != null, "flush against a down endpoint must fail")
-      assertTrue(
-          first.stop() != null,
-          "stop with a down endpoint must report the final flush error",
-      )
+      // Stop's final flush runs under the per-kind backoff gate the failed flush armed, like the
+      // reference stop(): nothing is sent and the records stay persisted.
+      assertEquals(null, first.stop(), "stop under a closed gate must not flush")
     }
     assertEquals(
         2,
@@ -570,6 +571,8 @@ class PersistenceIntegrationTest {
     val agent = newIntegrationAgent(host, mock.url) { c -> c.bufferSize = 1 }
     try {
       agent.sendEvent(testEvent(1))
+      // The persist backlog is capped at bufferSize (1): let the first write land.
+      agent.awaitPersists()
       agent.sendEvent(testEvent(2))
       assertEquals(1L, agent.stats().eventsDropped, "dropped")
       waitUntil(

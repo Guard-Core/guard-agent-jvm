@@ -1,0 +1,49 @@
+{
+ "batch": {
+  "agent_version": "NoneType",
+  "batch_id": "str",
+  "compressed": "bool",
+  "created_at": "str",
+  "events": "list",
+  "guard_core_version": "NoneType",
+  "guard_version": "NoneType",
+  "metrics": "list",
+  "project_id": "str"
+ },
+ "event": {
+  "action_taken": "str",
+  "country": "NoneType",
+  "decorator_type": "NoneType",
+  "endpoint": "NoneType",
+  "event_type": "str",
+  "handler_name": "NoneType",
+  "idempotency_key": "str",
+  "ip_address": "str",
+  "metadata": "dict",
+  "method": "NoneType",
+  "pattern_matched": "NoneType",
+  "reason": "str",
+  "response_time": "NoneType",
+  "rule_type": "NoneType",
+  "status_code": "NoneType",
+  "timestamp": "str",
+  "user_agent": "NoneType"
+ },
+ "metric": {
+  "endpoint": "NoneType",
+  "metric_type": "str",
+  "tags": "dict",
+  "timestamp": "str",
+  "value": "float"
+ },
+ "status": {
+  "buffer_size": "int",
+  "errors": "list",
+  "events_failed": "int",
+  "events_sent": "int",
+  "last_flush": "NoneType",
+  "status": "str",
+  "timestamp": "str",
+  "uptime": "float"
+ }
+}

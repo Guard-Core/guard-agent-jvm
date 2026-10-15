@@ -1,0 +1,986 @@
+[
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"success\":true}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"success\":false}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"success\":false,\"errors\":[\"quota\"]}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":[\"quota\"]}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":[]}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":\"\"}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":0}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":{\"a\":1}}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":true}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":null}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"errors\":1}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "{\"message\":\"ok\"}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "[]",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "[1]",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "null",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "\"ok\"",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "true",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "not json",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 200,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 201,
+  "body": "",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 202,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 204,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 301,
+  "body": "",
+  "headers": {
+   "Location": "http://other/"
+  },
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 302,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 400,
+  "body": "bad",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 401,
+  "body": "no",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "events",
+  "status": 403,
+  "body": "no",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "events",
+  "status": 404,
+  "body": "gone",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 405,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 408,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 413,
+  "body": "big",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 422,
+  "body": "bad",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "events",
+  "status": 429,
+  "body": "",
+  "headers": {
+   "Retry-After": "0"
+  },
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "events",
+  "status": 500,
+  "body": "boom",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "events",
+  "status": 502,
+  "body": "boom",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"success\":true}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"success\":false}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"success\":false,\"errors\":[\"quota\"]}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":[\"quota\"]}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":[]}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":\"\"}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":0}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":{\"a\":1}}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":true}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":null}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"errors\":1}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "{\"message\":\"ok\"}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "[]",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "[1]",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "null",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "\"ok\"",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "true",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "not json",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 200,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 201,
+  "body": "",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 202,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 204,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 301,
+  "body": "",
+  "headers": {
+   "Location": "http://other/"
+  },
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 302,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 400,
+  "body": "bad",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 401,
+  "body": "no",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "status",
+  "status": 403,
+  "body": "no",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "status",
+  "status": 404,
+  "body": "gone",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 405,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 408,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 413,
+  "body": "big",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 422,
+  "body": "bad",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "status",
+  "status": 429,
+  "body": "",
+  "headers": {
+   "Retry-After": "0"
+  },
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "status",
+  "status": 500,
+  "body": "boom",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "status",
+  "status": 502,
+  "body": "boom",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"success\":true}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"success\":false}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"success\":false,\"errors\":[\"quota\"]}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":[\"quota\"]}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":[]}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":\"\"}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":0}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":{\"a\":1}}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":true}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":null}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"errors\":1}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{}",
+  "headers": {},
+  "confirmed": false,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "{\"message\":\"ok\"}",
+  "headers": {},
+  "confirmed": true,
+  "requests": 1,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "[]",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "[1]",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "null",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "\"ok\"",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "true",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "not json",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 200,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 201,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 202,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 204,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 301,
+  "body": "",
+  "headers": {
+   "Location": "http://other/"
+  },
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 302,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 400,
+  "body": "bad",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 401,
+  "body": "no",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "rules",
+  "status": 403,
+  "body": "no",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "rules",
+  "status": 404,
+  "body": "gone",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 405,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 408,
+  "body": "",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 413,
+  "body": "big",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 422,
+  "body": "bad",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 0
+ },
+ {
+  "kind": "rules",
+  "status": 429,
+  "body": "",
+  "headers": {
+   "Retry-After": "0"
+  },
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "rules",
+  "status": 500,
+  "body": "boom",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ },
+ {
+  "kind": "rules",
+  "status": 502,
+  "body": "boom",
+  "headers": {},
+  "confirmed": false,
+  "requests": 3,
+  "breaker_failures": 3
+ }
+]

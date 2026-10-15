@@ -210,8 +210,8 @@ public class SecurityMetric {
 
 /**
  * models.go `eventBatch`: the wire payload for POST /api/v1/events and POST /api/v1/metrics,
- * matching BatchTelemetryRequest. A null (or empty) events/metrics list is omitted, mirroring the
- * omitempty slice semantics.
+ * matching BatchTelemetryRequest. Both lists are always present (`[]` when empty), like the
+ * reference's model_dump.
  */
 public class EventBatch {
   public var projectId: String = ""
@@ -238,12 +238,6 @@ public class AgentStatusPayload {
   public var bufferSize: Int = 0
   public var lastFlush: Instant? = null
   public var errors: List<String>? = null
-}
-
-/** transport.go `batchResponse`: the TelemetryResponse analog. */
-internal class BatchResponse {
-  var success: Boolean = false
-  var errors: List<String>? = null
 }
 
 /**
@@ -281,33 +275,32 @@ internal fun writeSecurityEventJson(
       field(name) { appendGoString(sb, v) }
     }
   }
+  // ip_address, action_taken, reason and metadata are always present, as in the reference
+  // (str defaults "" and dict default {}); optional fields the reference sends as null are omitted
+  // when unset, which the API treats the same.
+  fun writeRequiredString(name: String, v: String?) {
+    field(name) { appendGoString(sb, v ?: "") }
+  }
   // timestamp and event_type carry no omitempty.
   field("timestamp") {
     appendGoString(sb, rfc3339Nano(ev.timestamp ?: Instant.EPOCH))
   }
   field("event_type") { appendGoString(sb, ev.eventType) }
   writeString("idempotency_key", ev.idempotencyKey)
-  writeString("ip_address", ev.ipAddress)
+  writeRequiredString("ip_address", ev.ipAddress)
   writeString("country", ev.country)
   writeString("user_agent", ev.userAgent)
-  writeString("action_taken", ev.actionTaken)
-  writeString("reason", ev.reason)
+  writeRequiredString("action_taken", ev.actionTaken)
+  writeRequiredString("reason", ev.reason)
   writeString("endpoint", ev.endpoint)
   writeString("method", ev.method)
-  if (ev.statusCode != null) {
-    field("status_code") { sb.append(ev.statusCode.toString()) }
-  }
-  val responseTime = ev.responseTime
-  if (responseTime != null) {
-    field("response_time") { sb.append(GoFloat.goJson(responseTime)) }
-  }
+  field("status_code") { sb.append(ev.statusCode?.toString() ?: "null") }
+  field("response_time") { sb.append(ev.responseTime?.let { GoFloat.goJson(it) } ?: "null") }
   writeString("decorator_type", ev.decoratorType)
   writeString("rule_type", ev.ruleType)
   writeString("pattern_matched", ev.patternMatched)
   writeString("handler_name", ev.handlerName)
-  if (ev.metadata != null) {
-    field("metadata") { writeGoValue(sb, ev.metadata) }
-  }
+  field("metadata") { writeGoValue(sb, ev.metadata ?: emptyMap<String, Any?>()) }
   sb.append('}')
 }
 
@@ -327,10 +320,8 @@ internal fun writeSecurityMetricJson(
     sb.append(",\"endpoint\":")
     appendGoString(sb, endpoint)
   }
-  if (m.tags != null) {
-    sb.append(",\"tags\":")
-    writeGoValue(sb, m.tags)
-  }
+  sb.append(",\"tags\":")
+  writeGoValue(sb, m.tags ?: emptyMap<String, String>())
   sb.append('}')
 }
 
@@ -340,26 +331,21 @@ internal fun writeEventBatchJson(
 ) {
   sb.append("{\"project_id\":")
   appendGoString(sb, batch.projectId)
-  if (!batch.events.isNullOrEmpty()) {
-    sb.append(",\"events\":[")
-    batch.events!!.forEachIndexed { i, ev ->
-      if (i > 0) {
-        sb.append(',')
-      }
-      writeSecurityEventJson(sb, ev)
+  sb.append(",\"events\":[")
+  batch.events.orEmpty().forEachIndexed { i, ev ->
+    if (i > 0) {
+      sb.append(',')
     }
-    sb.append(']')
+    writeSecurityEventJson(sb, ev)
   }
-  if (!batch.metrics.isNullOrEmpty()) {
-    sb.append(",\"metrics\":[")
-    batch.metrics!!.forEachIndexed { i, m ->
-      if (i > 0) {
-        sb.append(',')
-      }
-      writeSecurityMetricJson(sb, m)
+  sb.append("],\"metrics\":[")
+  batch.metrics.orEmpty().forEachIndexed { i, m ->
+    if (i > 0) {
+      sb.append(',')
     }
-    sb.append(']')
+    writeSecurityMetricJson(sb, m)
   }
+  sb.append(']')
   sb.append(",\"batch_id\":")
   appendGoString(sb, batch.batchId)
   sb.append(",\"created_at\":")
@@ -398,20 +384,20 @@ internal fun writeAgentStatusJson(
   sb.append(",\"buffer_size\":")
   sb.append(payload.bufferSize.toString())
   val lastFlush = payload.lastFlush
+  sb.append(",\"last_flush\":")
   if (lastFlush != null) {
-    sb.append(",\"last_flush\":")
     appendGoString(sb, rfc3339Nano(lastFlush))
+  } else {
+    sb.append("null")
   }
-  if (!payload.errors.isNullOrEmpty()) {
-    sb.append(",\"errors\":[")
-    payload.errors!!.forEachIndexed { i, e ->
-      if (i > 0) {
-        sb.append(',')
-      }
-      appendGoString(sb, e)
+  sb.append(",\"errors\":[")
+  payload.errors.orEmpty().forEachIndexed { i, e ->
+    if (i > 0) {
+      sb.append(',')
     }
-    sb.append(']')
+    appendGoString(sb, e)
   }
+  sb.append(']')
   sb.append('}')
 }
 

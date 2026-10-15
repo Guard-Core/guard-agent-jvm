@@ -76,9 +76,22 @@ internal class Persistence(
 
   /**
    * persistence.go `shortKey`: the globally-unique short part of a persistence key:
-   * "{kind}_{unix_nanos}_{8 hex chars}".
+   * "{kind}_{unix_nanos}_{8 hex chars}", the reference key shape.
    */
-  fun shortKey(kind: String): String = kind + "_" + System.nanoTime() + "_" + randomHex(4)
+  fun shortKey(kind: String): String = kind + "_" + nextStamp() + "_" + randomHex(4)
+
+  private val lastStamp = java.util.concurrent.atomic.AtomicLong(0)
+
+  /**
+   * The wall-clock epoch nanoseconds, like the reference's time.time_ns() (never the JVM monotonic
+   * clock, whose origin is arbitrary), forced strictly increasing within this process so key order
+   * equals mint order even when two keys share a clock tick.
+   */
+  private fun nextStamp(): Long {
+    val now = java.time.Instant.now()
+    val wall = now.epochSecond * 1_000_000_000L + now.nano
+    return lastStamp.updateAndGet { maxOf(wall, it + 1) }
+  }
 
   fun fullKey(
       namespace: String,
