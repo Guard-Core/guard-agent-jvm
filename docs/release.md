@@ -7,15 +7,15 @@ This file covers what differs here.
 
 ## Versioning law
 
-- Artifact `com.guard-core:guard-agent-jvm`; version `3.2.3`, mirroring
-  guard-agent 3.2.3 (the family versioning law, lockstep with the engines at
+- Artifact `com.guard-core:guard-agent-jvm`; version `3.2.4`, mirroring
+  guard-agent 3.2.4 (the family versioning law, lockstep with the engines at
   guard-core 4.3.3). The version lives in
   `build.gradle.kts`; the tag must equal it.
 - The engine lockstep pin lives in `gradle/libs.versions.toml` (`guardCore =
   "4.3.3"`); it moves only when the engine train moves. The published POM
   carries NO guard-core dependency (compile-only): the agent artifact stays
   engine-free at runtime, exactly like the Go agent library.
-- Tags are bare `vX.Y.z` only (`v3.2.3`). The `tag-consistency` job audits
+- Tags are bare `vX.Y.z` only (`v3.2.4`). The `tag-consistency` job audits
   this (the guard-core-rs invisible-rule incident on `refs/tags/v4.3.2` is
   the standing lesson).
 - groupId `com.guard-core`; Kotlin packages stay `com.guardcore.*`.
@@ -25,14 +25,14 @@ This file covers what differs here.
 The workflow enforces this: tagging without the flip fails `tag-consistency`
 with an explicit message.
 
-- [ ] `build.gradle.kts`: `version = "3.2.3-SNAPSHOT"` -> `version = "3.2.3"`.
+- [ ] `build.gradle.kts`: `version = "3.2.4-SNAPSHOT"` -> `version = "3.2.4"`.
 - [ ] `gradle/libs.versions.toml`: `guardCore` still reads the lockstep engine
       version (`4.3.3`).
 - [ ] The pinned engine ref (ci.yml clone step + settings comments) already
       points at the released engine SHA (bumped at train time, per the
       family spec).
-- [ ] `CHANGELOG.md`: `## Unreleased (3.2.3-SNAPSHOT)` renamed to
-      `## [3.2.3] - YYYY-MM-DD` with the engine pin stated.
+- [ ] `CHANGELOG.md`: `## Unreleased (3.2.4-SNAPSHOT)` renamed to
+      `## [3.2.4] - YYYY-MM-DD` with the engine pin stated.
 - [ ] CI green on the release PR; merge it; tag the merge commit.
 
 ## Release choreography
@@ -49,10 +49,10 @@ Central).
    deployments released, repo1 answering 200 for both engine artifacts
    (engine docs/release.md, steps 1 and 5).
 2. Merge the version-flip PR.
-3. Tag: `git tag v3.2.3 && git push origin v3.2.3`. Gates run in order:
+3. Tag: `git tag v3.2.4 && git push origin v3.2.4`. Gates run in order:
    pre-flight (engine live) -> tests at tag (composite ON, same as ci.yml) ->
    tag-consistency (bare tag equals the in-file version).
-4. Create the GitHub release for `v3.2.3`. The publish job:
+4. Create the GitHub release for `v3.2.4`. The publish job:
    - verifies the four secrets are set (Portal user token + GPG key);
    - checks repo1 for this exact artifact and skips if already live
      (changed-only rerun safety);
@@ -62,11 +62,11 @@ Central).
 5. Release the deployment in the Portal UI (central.sonatype.com, Publishing
    -> Deployments).
 6. Verify liveness:
-   `curl -f https://repo1.maven.org/maven2/com/guard-core/guard-agent-jvm/3.2.3/guard-agent-jvm-3.2.3.pom`
+   `curl -f https://repo1.maven.org/maven2/com/guard-core/guard-agent-jvm/3.2.4/guard-agent-jvm-3.2.4.pom`
 
 ## Post-release audits (per train)
 
-1. Release page for `v3.2.3` exists with the expected notes (per-tag audit;
+1. Release page for `v3.2.4` exists with the expected notes (per-tag audit;
    the php v4.3.1 lesson).
 2. repo1 answers 200 for the artifact (the same check the workflow uses).
 3. No deployment left VALIDATED/PENDING in the Portal.
