@@ -38,7 +38,7 @@ jobs:
         run: |
           git clone https://github.com/Guard-Core/guard-core-jvm.git guard-core-jvm
           cd guard-core-jvm
-          git checkout 6cde4afd08a0172c5f6a41eb8e29ec754288782e
+          git checkout 77116062fc7d88dcb610b1f588e2bc78e63848ad
 
       # W7 lands the Redis-backed persistence tests; both need Redis (the
       # same service shape the guard-core-jvm CI runs).
