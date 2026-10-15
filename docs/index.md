@@ -10,7 +10,7 @@ acknowledged is lost, nothing unacknowledged is forgotten.
   (behavior 1:1 with byte-exact observable surfaces: wire payloads, header
   names, event/metric model shapes, config keys, AES-GCM and HMAC parameters
   pinned against the Go test vectors). The 3.2.4 line mirrors the
-  guard-agent 3.2.4 release (lockstep with the engines at 4.3.3)
+  guard-agent 3.2.4 release (lockstep with the engines at 4.4.0)
 - **Coordinates**: `com.guard-core:guard-agent-jvm:3.2.4` at release
 - **Runtime**: engine-free (compile-only facade contract over
   `com.guardcore.protocols`)

@@ -13,7 +13,7 @@ pluginManagement {
 // GUARD_CORE_USE_COMPOSITE (environment variable):
 //   unset / "1" / "true"  -> composite ON (default). The engine is built from
 //     source via includeBuild + dependency substitution: CI (and local builds)
-//     check out Guard-Core/guard-core-jvm at the PINNED REF 2415a77 as the
+//     check out Guard-Core/guard-core-jvm at the PINNED REF 6cde4af as the
 //     sibling directory ./guard-core-jvm, and the block below substitutes the
 //     declared coordinates com.guard-core:guard-core with the included
 //     build's project.
@@ -68,7 +68,7 @@ if (useComposite) {
     roots.firstOrNull { it.resolve("settings.gradle.kts").isFile }
         ?: throw GradleException(
             "The guard-core-jvm engine checkout was not found. Clone Guard-Core/guard-core-jvm " +
-                "at the pinned ref 2415a77 next to this repository (or point -PguardCoreJvmDir / " +
+                "at the pinned ref 6cde4af next to this repository (or point -PguardCoreJvmDir / " +
                 "GUARD_CORE_JVM_DIR at an existing checkout). Searched: " +
                 roots.joinToString(", ") { it.path },
         )
