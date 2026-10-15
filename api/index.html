@@ -486,7 +486,7 @@ agent is created and started explicitly:</p>
 
 <span class="c1">// ...</span>
 
-<span class="n">agent</span><span class="p">.</span><span class="na">stop</span><span class="p">()</span><span class="w"> </span><span class="c1">// cancels the loops, then one final forced flush</span>
+<span class="n">agent</span><span class="p">.</span><span class="na">stop</span><span class="p">()</span><span class="w"> </span><span class="c1">// cancels the loops, then one final flush under the backoff gates</span>
 </code></pre></div>
 <p>Behavioral surface (1:1 with guard-agent-go):</p>
 <ul>
