@@ -1,8 +1,14 @@
 # Changelog
 
-All notable changes to guard-agent-jvm are documented here. The version line mirrors guard-agent 3.2.3 (the family versioning law); releases ship as v-prefixed git tags after the family's W8 certification.
+All notable changes to guard-agent-jvm are documented here. The version line mirrors guard-agent 3.2.4 (the family versioning law); releases ship as v-prefixed git tags after the family's W8 certification.
 
-## Unreleased
+## [3.2.4] - 2026-10-15
+
+### Fixed
+
+- The Redis persist no longer runs on the caller's thread or under the buffer lock, so a slow or failing Redis no longer delays event-emitting requests. The key is minted under the lock and the write is submitted to a bounded persist pool (4 threads, queue of 1024) that `stop` drains for up to 10 seconds. A full or closed pool skips persistence and counts a persist failure, and a record flushed or evicted before its write lands has its key deleted instead of left to TTL. The startup encryption error now reports its cause.
+
+### Changed
 
 - Dependencies: netty is pinned to 4.1.139.Final through `platform(io.netty:netty-bom)`. lettuce-core 6.8.2 declares netty 4.1.125, which carries twelve advisories fixed by 4.1.137 at the latest. The pin is declared here as well as in the guard-core-jvm facade, so this lockfile stays the same whichever engine revision the build resolves. All twelve netty osv-scanner suppressions are removed.
 - The agent now fills `AgentConfig.guardCoreVersion` at construction from the guard-core-jvm engine found on the runtime classpath (read reflectively, so the engine stays an optional dependency) when the config leaves it empty, so Java projects report their engine version like the Go and PHP agents. A user-set value always wins.

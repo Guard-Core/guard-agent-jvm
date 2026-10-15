@@ -8,11 +8,11 @@
 
 ## Coordinates
 
-Published on Maven Central as `com.guard-core:guard-agent-jvm:3.2.3`. The group ID is `com.guard-core` (the Central Portal namespace); Kotlin packages stay `com.guardcore.*`.
+Published on Maven Central as `com.guard-core:guard-agent-jvm:3.2.4`. The group ID is `com.guard-core` (the Central Portal namespace); Kotlin packages stay `com.guardcore.*`.
 
 ```kotlin
 dependencies {
-    implementation("com.guard-core:guard-agent-jvm:3.2.3")
+    implementation("com.guard-core:guard-agent-jvm:3.2.4")
 }
 ```
 

@@ -26,7 +26,7 @@ ___
 
 ## Status
 
-`3.2.3`: the agent is a TRUE PORT of [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2 (~3.8k non-test LOC), behavior 1:1 with byte-exact observable surfaces (wire payloads, header names, event/metric model shapes, config keys, AES-GCM and HMAC parameters pinned against the Go test vectors). Released on Maven Central as `com.guard-core:guard-agent-jvm:3.2.3`. The 3.2.3 line mirrors the guard-agent 3.2.3 release (version reporting lockstep with the engines at guard-core 4.3.3).
+`3.2.4`: the agent is a TRUE PORT of [guard-agent-go](https://github.com/Guard-Core/guard-agent-go) v3.2.2 (~3.8k non-test LOC), behavior 1:1 with byte-exact observable surfaces (wire payloads, header names, event/metric model shapes, config keys, AES-GCM and HMAC parameters pinned against the Go test vectors). Released on Maven Central as `com.guard-core:guard-agent-jvm:3.2.4`. The 3.2.4 line mirrors the guard-agent 3.2.4 release (version reporting lockstep with the engines at guard-core 4.3.3).
 
 ## What this is
 
@@ -46,7 +46,7 @@ Published on Maven Central:
 
 ```kotlin
 dependencies {
-    implementation("com.guard-core:guard-agent-jvm:3.2.3")
+    implementation("com.guard-core:guard-agent-jvm:3.2.4")
 }
 ```
 
