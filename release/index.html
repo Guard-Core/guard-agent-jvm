@@ -434,14 +434,14 @@ This file covers what differs here.</p>
   "4.3.3"</code>); it moves only when the engine train moves. The published POM
   carries NO guard-core dependency (compile-only): the agent artifact stays
   engine-free at runtime, exactly like the Go agent library.</li>
-<li>Tags are bare <code>vX.Y.z</code> only (<code>v3.2.4</code>). The <code>tag-consistency</code> job audits
+<li>Tags are bare <code>vX.Y.z</code> only (<code>v3.2.4</code>). The <code>verify</code> job of release.yml audits
   this (the guard-core-rs invisible-rule incident on <code>refs/tags/v4.3.2</code> is
   the standing lesson).</li>
 <li>groupId <code>com.guard-core</code>; Kotlin packages stay <code>com.guardcore.*</code>.</li>
 </ul>
 <h2 id="version-flip-checklist-the-release-pr">Version-flip checklist (the release PR)</h2>
-<p>The workflow enforces this: tagging without the flip fails <code>tag-consistency</code>
-with an explicit message.</p>
+<p>The workflow enforces this: releasing a tag without the flip fails the
+<code>verify</code> job with an explicit message.</p>
 <ul>
 <li>[ ] <code>build.gradle.kts</code>: <code>version = "3.2.4-SNAPSHOT"</code> -&gt; <code>version = "3.2.4"</code>.</li>
 <li>[ ] <code>gradle/libs.versions.toml</code>: <code>guardCore</code> still reads the lockstep engine
@@ -466,10 +466,15 @@ Central).</p>
    deployments released, repo1 answering 200 for both engine artifacts
    (engine docs/release.md, steps 1 and 5).</li>
 <li>Merge the version-flip PR.</li>
-<li>Tag: <code>git tag v3.2.4 &amp;&amp; git push origin v3.2.4</code>. Gates run in order:
-   pre-flight (engine live) -&gt; tests at tag (composite ON, same as ci.yml) -&gt;
-   tag-consistency (bare tag equals the in-file version).</li>
-<li>Create the GitHub release for <code>v3.2.4</code>. The publish job:</li>
+<li>Tag: <code>git tag v3.2.4 &amp;&amp; git push origin v3.2.4</code>. The tag push runs
+   nothing: the merge commit's push run of ci.yml (build and tests against the
+   pinned engine, dependency audit) is the gate.</li>
+<li>Create the GitHub release for <code>v3.2.4</code>. release.yml runs no build or
+   test for validation. The <code>verify</code> job checks the tag is bare <code>vX.Y.z</code>,
+   equals the in-file version (and is not a SNAPSHOT), and that the newest
+   push run of ci.yml on the tagged commit succeeded (it waits up to an hour
+   for runs still in progress). The pre-flight job then requires both engine
+   artifacts live on Maven Central. Then the publish job:</li>
 <li>verifies the four secrets are set (Portal user token + GPG key);</li>
 <li>checks repo1 for this exact artifact and skips if already live
      (changed-only rerun safety);</li>
@@ -489,12 +494,13 @@ Central).</p>
 <li>No deployment left VALIDATED/PENDING in the Portal.</li>
 <li>The pinned engine ref (ci.yml clone step + settings comments) moves to
    the released engine SHA AT TRAIN TIME, before the consumer tags: the
-   agent's at-tag tests must run against the engine that actually ships
+   agent's push CI must run against the engine that actually ships
    (the family spec pins this; a pin bump is an ordinary development PR).</li>
 </ol>
 <h2 id="rerun-safety-failure-recovery-rollback">Rerun safety, failure recovery, rollback</h2>
-<p>Same rules as the engine runbook: workflow_dispatch re-drives skip anything
-already live on repo1; a VALIDATED deployment you do not want gets Dropped in
+<p>Same rules as the engine runbook: a workflow_dispatch re-drive (Actions &gt;
+Release &gt; Run workflow, <code>tag</code> input) checks that tag out with master's current
+workflow and skips anything already live on repo1; a VALIDATED deployment you do not want gets Dropped in
 the Portal; published artifacts are immutable - no rollback after the Portal
 Release click, only a fix version.</p>
 
