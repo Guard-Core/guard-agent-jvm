@@ -7,7 +7,7 @@ coroutines = "1.11.0"
 spotless = "8.10.4"
 detekt = "1.23.8"
 lettuce = "6.8.2.RELEASE"
-netty = "4.1.139.Final"
+netty = "4.2.19.Final"
 guardCore = "4.4.0"
 
 [libraries]
