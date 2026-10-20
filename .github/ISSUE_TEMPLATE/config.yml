@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Guard Agent JVM Documentation
+    url: https://guard-core.github.io/guard-agent-jvm/
+    about: Check the documentation for usage information and tutorials
+  - name: Discord
+    url: https://discord.gg/ZW7ZJbjMkK
+    about: Questions and support in #help, new versions in #releases, development stream in #dev-feed
