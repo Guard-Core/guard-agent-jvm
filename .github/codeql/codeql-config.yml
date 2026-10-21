@@ -1,0 +1,5 @@
+name: guard-agent-jvm CodeQL
+# The workflow checks the engine out under guard-core-jvm/ for the composite build. The engine is scanned in its own
+# repository, so its files stay out of this one's results.
+paths-ignore:
+  - guard-core-jvm
