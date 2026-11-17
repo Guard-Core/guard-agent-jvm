@@ -4,10 +4,10 @@
 [versions]
 kotlin = "2.4.21"
 coroutines = "1.11.0"
-spotless = "8.10.4"
+spotless = "8.11.0"
 detekt = "1.23.8"
 lettuce = "6.9.0.RELEASE"
-netty = "4.2.19.Final"
+netty = "4.2.20.Final"
 guardCore = "4.4.0"
 
 [libraries]
