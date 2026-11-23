@@ -164,3 +164,13 @@ signing {
     sign(publishing.publications)
   }
 }
+
+// GHSA-9pwp-9qqc-pr26 and GHSA-qp49-qgx5-5m26: bouncycastle 1.84 is fixed in 1.85; Kotlin's
+// build-time configuration still locks 1.84.
+configurations
+    .matching { it.name == "kotlinBouncyCastleConfiguration" }
+    .configureEach {
+      resolutionStrategy.eachDependency {
+        if (requested.group == "org.bouncycastle") useVersion("1.85")
+      }
+    }
