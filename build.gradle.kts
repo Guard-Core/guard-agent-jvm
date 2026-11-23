@@ -87,8 +87,8 @@ detekt {
 // rehearsal uses publishToMavenLocal; signing activates only when the GPG
 // secrets are present so the local rehearsal needs no key material.
 
-val sourcesJar by
-    tasks.registering(Jar::class) {
+val sourcesJar =
+    tasks.register<Jar>("sourcesJar") {
       archiveClassifier = "sources"
       from(sourceSets["main"].allSource)
     }
@@ -96,8 +96,8 @@ val sourcesJar by
 // The standard javadoc task renders nothing for Kotlin-only sources; the jar
 // carries the project README so it is never an empty javadoc jar (the Portal
 // validator rejects those). Dokka HTML replaces this when the docs wave lands.
-val javadocJar by
-    tasks.registering(Jar::class) {
+val javadocJar =
+    tasks.register<Jar>("javadocJar") {
       archiveClassifier = "javadoc"
       from(tasks.named("javadoc"))
       from(rootProject.file("README.md"))
@@ -164,3 +164,13 @@ signing {
     sign(publishing.publications)
   }
 }
+
+// GHSA-9pwp-9qqc-pr26 and GHSA-qp49-qgx5-5m26: bouncycastle 1.84 is fixed in 1.85; Kotlin's
+// build-time configuration still locks 1.84.
+configurations
+    .matching { it.name == "kotlinBouncyCastleConfiguration" }
+    .configureEach {
+      resolutionStrategy.eachDependency {
+        if (requested.group == "org.bouncycastle") useVersion("1.85")
+      }
+    }
