@@ -87,8 +87,8 @@ detekt {
 // rehearsal uses publishToMavenLocal; signing activates only when the GPG
 // secrets are present so the local rehearsal needs no key material.
 
-val sourcesJar by
-    tasks.registering(Jar::class) {
+val sourcesJar =
+    tasks.register<Jar>("sourcesJar") {
       archiveClassifier = "sources"
       from(sourceSets["main"].allSource)
     }
@@ -96,8 +96,8 @@ val sourcesJar by
 // The standard javadoc task renders nothing for Kotlin-only sources; the jar
 // carries the project README so it is never an empty javadoc jar (the Portal
 // validator rejects those). Dokka HTML replaces this when the docs wave lands.
-val javadocJar by
-    tasks.registering(Jar::class) {
+val javadocJar =
+    tasks.register<Jar>("javadocJar") {
       archiveClassifier = "javadoc"
       from(tasks.named("javadoc"))
       from(rootProject.file("README.md"))
